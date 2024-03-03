@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   getDailySchedule,
   getGamesPerDay,
+  getTeamRoster,
   modulekitResponse,
 } from "./modulekit";
 import { NumericBoolean } from "hockeytech";
@@ -171,6 +172,16 @@ router
               params.end_date,
             );
             return modulekitResponse(params, "Gamesperday", games);
+          }
+          case "roster": {
+            const players = await getTeamRoster(
+              env,
+              league,
+              lang,
+              params.season_id,
+              params.team_id,
+            );
+            return modulekitResponse(params, "Roster", players);
           }
           default:
             break;

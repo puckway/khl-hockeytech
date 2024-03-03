@@ -36,6 +36,14 @@ export const request = async <T>(
       `Failed to ${method} ${url.href} (${response.status}): ${text}`,
     );
   }
+  const parsed = JSON.parse(text);
+  if ("error" in parsed && "code" in parsed.error) {
+    throw new KhlApiError(
+      `Failed to ${method} ${url.href} (${parsed.error.code}): ${
+        parsed.error.message ?? text
+      }`,
+    );
+  }
 
-  return JSON.parse(text) as T;
+  return parsed as T;
 };

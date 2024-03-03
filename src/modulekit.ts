@@ -1,4 +1,10 @@
-import { RESTGetAPIEvents, Routes, State } from "khl-api-types";
+import {
+  RESTGetAPIEvents,
+  RESTGetAPIPlayers,
+  Role,
+  Routes,
+  State,
+} from "khl-api-types";
 import { Env, HockeyTechParams, Lang, League, numBool } from ".";
 import { request } from "./rest";
 import {
@@ -7,6 +13,7 @@ import {
   Periods,
   GamesByDate,
   GamesPerDay,
+  RosterPlayer,
 } from "hockeytech";
 import { getTeam } from "./teams";
 
@@ -319,6 +326,90 @@ export const getGamesPerDay = async (
       return {
         ...date,
         numberofgames: String(count),
+      };
+    });
+};
+
+export const roleKeyToPosition = (key: Role) =>
+  key === Role.Forward ? "F" : key === Role.Defenseman ? "D" : "G";
+
+export const roleKeyToPositionId = (key: Role) =>
+  key === Role.Forward ? "8" : key === Role.Defenseman ? "1" : "7";
+
+export const getTeamRoster = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  seasonId: number,
+  teamId: number,
+): Promise<RosterPlayer[]> => {
+  const data = await request<RESTGetAPIPlayers>(league, Routes.players(), {
+    params: {
+      locale,
+      stage_id: seasonId,
+    },
+  });
+
+  return data
+    .filter(({ player }) => player.team?.id === teamId)
+    .map(({ player }) => {
+      const birthdate = player.birthday
+        ? new Date(player.birthday * 1000).toISOString().split("T")[0]
+        : "";
+      return {
+        id: String(player.id),
+        // Not directly analogous, but it's a good(?) place to put this data
+        person_id: String(player.khl_id),
+        active: "1",
+        // TODO: reverse the backwards names, split for first & last
+        first_name: player.name,
+        last_name: player.name,
+        name: player.name,
+        phonetic_name: "",
+        display_name: "",
+        shoots: player.stick?.toUpperCase() ?? "",
+        hometown: "",
+        homeprov: "",
+        homeplace: "",
+        homecntry: player.country,
+        birthtown: "",
+        birthprov: "",
+        birthplace: "",
+        birthcntry: "",
+        height: String(player.height),
+        weight: String(player.weight),
+        h: String(player.height),
+        w: String(player.weight),
+        height_hyphenated: "",
+        hidden: "0",
+        current_team: String(player.team?.id ?? ""),
+        player_id: String(player.id),
+        playerId: String(player.id),
+        status: "None",
+        birthdate,
+        birthdate_year: player.birthday
+          ? `'${new Date(player.birthday * 1000).toLocaleString(locale, {
+              year: "2-digit",
+            })}`
+          : "",
+        rawbirthdate: birthdate,
+        latest_team_id: String(player.team?.id ?? ""),
+        veteran_status: "0",
+        veteran_description: "",
+        team_name: player.team?.name ?? "",
+        division: player.team?.division ?? "",
+        tp_jersey_number: player.shirt_number
+          ? String(player.shirt_number)
+          : "",
+        // Assuming this is their first league. May also want to factor in their age
+        rookie: numBool(player.seasons_count.khl <= 1),
+        position_id: roleKeyToPositionId(player.role_key),
+        position: roleKeyToPosition(player.role_key),
+        isRookie: "",
+        draft_status: "",
+        draftinfo: [],
+        nhlteam: "",
+        player_image: player.image ?? "",
       };
     });
 };
