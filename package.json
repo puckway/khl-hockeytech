@@ -1,15 +1,27 @@
 {
   "name": "khl-hockeytech",
   "version": "0.0.0",
+  "author": {
+    "name": "shay",
+    "url": "https://shay.cat"
+  },
   "private": true,
+  "license": "MIT",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
     "start": "wrangler dev"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.5.3",
     "@cloudflare/workers-types": "^4.20240222.0",
+    "hockeytech": "^1.4.1",
     "typescript": "^5.0.4",
     "wrangler": "^3.0.0"
+  },
+  "dependencies": {
+    "itty-router": "^4.0.27",
+    "khl-api-types": "^1.1.2",
+    "zod": "^3.22.4"
   }
 }
