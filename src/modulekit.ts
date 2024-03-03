@@ -1,6 +1,7 @@
 import {
   RESTGetAPIEvents,
   RESTGetAPIPlayers,
+  RESTGetAPITeam,
   Role,
   Routes,
   State,
@@ -349,67 +350,70 @@ export const getTeamRoster = async (
       stage_id: seasonId,
     },
   });
+  const { team } = await request<RESTGetAPITeam>(league, Routes.team(), {
+    params: {
+      locale,
+      stage_id: seasonId,
+      id: teamId,
+    },
+  });
 
-  return data
-    .filter(({ player }) => player.team?.id === teamId)
-    .map(({ player }) => {
-      const birthdate = player.birthday
-        ? new Date(player.birthday * 1000).toISOString().split("T")[0]
-        : "";
-      return {
-        id: String(player.id),
-        // Not directly analogous, but it's a good(?) place to put this data
-        person_id: String(player.khl_id),
-        active: "1",
-        // TODO: reverse the backwards names, split for first & last
-        first_name: player.name,
-        last_name: player.name,
-        name: player.name,
-        phonetic_name: "",
-        display_name: "",
-        shoots: player.stick?.toUpperCase() ?? "",
-        hometown: "",
-        homeprov: "",
-        homeplace: "",
-        homecntry: player.country,
-        birthtown: "",
-        birthprov: "",
-        birthplace: "",
-        birthcntry: "",
-        height: String(player.height),
-        weight: String(player.weight),
-        h: String(player.height),
-        w: String(player.weight),
-        height_hyphenated: "",
-        hidden: "0",
-        current_team: String(player.team?.id ?? ""),
-        player_id: String(player.id),
-        playerId: String(player.id),
-        status: "None",
-        birthdate,
-        birthdate_year: player.birthday
-          ? `'${new Date(player.birthday * 1000).toLocaleString(locale, {
-              year: "2-digit",
-            })}`
-          : "",
-        rawbirthdate: birthdate,
-        latest_team_id: String(player.team?.id ?? ""),
-        veteran_status: "0",
-        veteran_description: "",
-        team_name: player.team?.name ?? "",
-        division: player.team?.division ?? "",
-        tp_jersey_number: player.shirt_number
-          ? String(player.shirt_number)
-          : "",
-        // Assuming this is their first league. May also want to factor in their age
-        rookie: numBool(player.seasons_count.khl <= 1),
-        position_id: roleKeyToPositionId(player.role_key),
-        position: roleKeyToPosition(player.role_key),
-        isRookie: "",
-        draft_status: "",
-        draftinfo: [],
-        nhlteam: "",
-        player_image: player.image ?? "",
-      };
-    });
+  return team.players.map((player) => {
+    const dplayer = data.find(({ player: p }) => p.id === player.id)?.player;
+    const birthdate = dplayer?.birthday
+      ? new Date(dplayer.birthday * 1000).toISOString().split("T")[0]
+      : "";
+    return {
+      id: String(player.id),
+      person_id: String(player.id),
+      active: "1",
+      // TODO: reverse the backwards names, split for first & last
+      first_name: player.name,
+      last_name: player.name,
+      name: player.name,
+      phonetic_name: "",
+      display_name: "",
+      shoots: dplayer?.stick?.toUpperCase() ?? "",
+      hometown: "",
+      homeprov: "",
+      homeplace: "",
+      homecntry: player.country,
+      birthtown: "",
+      birthprov: "",
+      birthplace: "",
+      birthcntry: "",
+      height: String(dplayer?.height ?? ""),
+      weight: String(dplayer?.weight ?? "0"),
+      h: String(dplayer?.height ?? ""),
+      w: String(dplayer?.weight ?? "0"),
+      height_hyphenated: "",
+      hidden: "0",
+      current_team: String(team.id),
+      player_id: String(player.id),
+      playerId: String(player.id),
+      status: "None",
+      birthdate,
+      birthdate_year: dplayer?.birthday
+        ? `'${new Date(dplayer?.birthday * 1000).toLocaleString(locale, {
+            year: "2-digit",
+          })}`
+        : "",
+      rawbirthdate: birthdate,
+      latest_team_id: String(team.id),
+      veteran_status: "0",
+      veteran_description: "",
+      team_name: team.name,
+      division: team.division ?? "",
+      tp_jersey_number: player.shirt_number ? String(player.shirt_number) : "",
+      // Assuming this is their first league. May also want to factor in their age
+      rookie: numBool(dplayer ? dplayer.seasons_count.khl <= 1 : false),
+      position_id: roleKeyToPositionId(player.role_key),
+      position: roleKeyToPosition(player.role_key),
+      isRookie: "",
+      draft_status: "",
+      draftinfo: [],
+      nhlteam: "",
+      player_image: player.image ?? "",
+    };
+  });
 };
