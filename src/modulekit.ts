@@ -2,6 +2,7 @@ import {
   RESTGetAPIEvents,
   RESTGetAPIPlayers,
   RESTGetAPITeam,
+  RESTGetAPITeams,
   Role,
   Routes,
   StageType,
@@ -17,6 +18,7 @@ import {
   GamesPerDay,
   RosterPlayer,
   Season,
+  TeamsBySeason,
 } from "hockeytech";
 import { getTeam } from "./teams";
 
@@ -473,4 +475,38 @@ export const getSeasonList = async (
     }
   }
   return stages;
+};
+
+export const getTeamsBySeason = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  seasonId: number,
+): Promise<TeamsBySeason[]> => {
+  const data = await request<RESTGetAPITeams>(league, Routes.teams(), {
+    params: {
+      locale,
+      stage_id: seasonId,
+    },
+  });
+
+  return data.map(({ team }) => {
+    const t = getTeam(league, team.id);
+    return {
+      id: String(team.id),
+      city: team.location,
+      code: t?.abbreviations[locale] ?? "",
+      name: team.name,
+      nickname: t?.names[locale] ?? team.name,
+      team_caption: "",
+      team_logo_url: team.image,
+      // These aren't numbers
+      // division_id: team.division_key,
+      division_id: "",
+      division_long_name: team.division ?? "",
+      division_short_name: (team.division ?? "")
+        .replace(/division|Дивизион/i, "")
+        .trim(),
+    };
+  });
 };

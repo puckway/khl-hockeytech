@@ -5,6 +5,7 @@ import {
   getGamesPerDay,
   getSeasonList,
   getTeamRoster,
+  getTeamsBySeason,
   modulekitResponse,
 } from "./modulekit";
 import { NumericBoolean } from "hockeytech";
@@ -187,6 +188,15 @@ router
           case "seasons": {
             const seasons = await getSeasonList(env, league, lang);
             return modulekitResponse(params, "Seasons", seasons);
+          }
+          case "teamsbyseason": {
+            const teams = await getTeamsBySeason(
+              env,
+              league,
+              lang,
+              params.season_id,
+            );
+            return modulekitResponse(params, "Teamsbyseason", teams);
           }
           default:
             break;
