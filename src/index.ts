@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   getDailySchedule,
   getGamesPerDay,
+  getSeasonList,
   getTeamRoster,
   modulekitResponse,
 } from "./modulekit";
@@ -182,6 +183,10 @@ router
               params.team_id,
             );
             return modulekitResponse(params, "Roster", players);
+          }
+          case "seasons": {
+            const seasons = await getSeasonList(env, league, lang);
+            return modulekitResponse(params, "Seasons", seasons);
           }
           default:
             break;

@@ -4,6 +4,7 @@ import {
   RESTGetAPITeam,
   Role,
   Routes,
+  StageType,
   State,
 } from "khl-api-types";
 import { Env, HockeyTechParams, Lang, League, numBool } from ".";
@@ -15,6 +16,7 @@ import {
   GamesByDate,
   GamesPerDay,
   RosterPlayer,
+  Season,
 } from "hockeytech";
 import { getTeam } from "./teams";
 
@@ -416,4 +418,59 @@ export const getTeamRoster = async (
       player_image: player.image ?? "",
     };
   });
+};
+
+type RESTGetAPITables = {
+  season: string;
+  stages: {
+    id: number;
+    title: string;
+    type: StageType;
+    regular: Array<unknown> | null;
+    playin: Array<unknown> | null;
+    playoff: Array<unknown> | null;
+    display_rule: string;
+  }[];
+}[];
+
+export const getSeasonList = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+): Promise<Season[]> => {
+  const seasons = await request<RESTGetAPITables>(league, Routes.tables(), {
+    params: { locale },
+  });
+  const stages: Season[] = [];
+  for (const season of seasons) {
+    const [startYear, endYear] = season.season.split("/").map(Number);
+    for (const stage of season.stages) {
+      stages.push({
+        season_id: String(stage.id),
+        season_name: stage.title,
+        shortname: season.season,
+        playoff: numBool(stage.type === StageType.Playoff),
+        career: "1",
+        // This data isn't provided by the KHL so we just manufacture plausible
+        // container dates that can be used to vaguely sort stages chronologically
+        // ---
+        // A regular stage runs through Jul 1 - Feb 24. A playoff stage goes from
+        // Feb 25 - Jun 30. This is intentionally imprecise, and covers the entire
+        // calendar year.
+        start_date: (stage.type === StageType.Playoff
+          ? new Date(endYear, 1, 25)
+          : new Date(startYear, 6, 1)
+        )
+          .toISOString()
+          .split("T")[0],
+        end_date: (stage.type === StageType.Playoff
+          ? new Date(endYear, 5, 30)
+          : new Date(endYear, 1, 24)
+        )
+          .toISOString()
+          .split("T")[0],
+      });
+    }
+  }
+  return stages;
 };
