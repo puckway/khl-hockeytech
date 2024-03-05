@@ -30,6 +30,20 @@ const scorebar = await client.getScorebar(1, 1);
 
 ## Limits & Implementation Notes
 
+### IDs & User-Facing URLs
+
+Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. This presents a problem: how can I construct `*.khl.ru` URLs for my users?
+
+Instead of pointing your users to `khl.ru` directly, use one of the following redirect paths with the IDs you are provided through this API:
+
+| Name        | Path                                  |
+|-------------|---------------------------------------|
+| Game Center | `/game-center/:league/:season_id/:id` |
+| Player      | `/player/:league/:id`                 |
+| Team        | `/team/:league/:id`                   |
+
+### Speed
+
 The KHL API is quite slow, so in order to speed up requests, many common types of data are cached on KV. Here's a short rundown:
 
 | Resource                      | Cache TTL                 |

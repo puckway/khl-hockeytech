@@ -9,6 +9,8 @@ import {
   modulekitResponse,
 } from "./modulekit";
 import { NumericBoolean } from "hockeytech";
+import { getchEvent } from "./cache";
+import { State } from "khl-api-types";
 
 export interface Env {
   KV: KVNamespace;
@@ -135,7 +137,7 @@ export type HockeyTechParams = z.infer<typeof zHockeyTechParams>;
 const router = Router();
 
 router
-  .get("/", async (request: IRequest, env: Env, context: ExecutionContext) => {
+  .get("/", async (request, env: Env, context: ExecutionContext) => {
     const url = z
       .string()
       .refine((v) =>
@@ -216,6 +218,30 @@ router
     }
 
     return null;
+  })
+  .get("/game-center/:league/:seasonId/:id", async (req, env: Env) => {
+    const { league, seasonId, id } = z
+      .object({
+        league: zClientCode,
+        seasonId: zIntAsString,
+        id: zIntAsString,
+      })
+      .parse(req.params);
+    const { lang } = z
+      .object({ lang: zLang })
+      .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
+
+    const event = await getchEvent(env, league, seasonId, id);
+    return new Response(undefined, {
+      status: 302,
+      headers: {
+        Location: `https://${lang === "ru" ? "www" : lang}.khl.ru/game/${
+          event.outer_stage_id
+        }/${event.khl_id}/${
+          event.game_state_key === State.Finished ? "resume" : "preview"
+        }/`,
+      },
+    });
   })
   .all("*", () => error(404));
 
