@@ -44,9 +44,20 @@ export const getPlayerProfileBio = async (
   const mostRecentTeam = player.team ?? player.teams[player.teams.length - 1];
   const team = allTeams[league].find((t) => t.id === mostRecentTeam?.id);
 
+  const currentYear = new Date().getUTCFullYear();
+  const hasRecentSeason =
+    player.teams.filter(
+      // Find any team with a `seasons` that includes either the current or
+      // previous season. If the player has not played in 2 years, they are
+      // probably considered inactive. However this is mostly moot since the
+      // KHL doesn't seem to return obviously inactive players here anyway.
+      (t) =>
+        t.seasons.split(",").find((year) => year === String(currentYear)) !==
+        undefined,
+    ).length !== 0;
+
   return {
-    // educated guess
-    active: player.seasons_count.team !== 0 ? "1" : "0",
+    active: hasRecentSeason ? "1" : "0",
     bio: `${name} is a ${player.role} from ${
       player.country
     }, currently playing for ${
