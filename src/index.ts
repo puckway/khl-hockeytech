@@ -9,7 +9,7 @@ import {
   modulekitResponse,
 } from "./modulekit";
 import { NumericBoolean } from "hockeytech";
-import { getchEvent } from "./cache";
+import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import { getPlayerProfileBio } from "./players";
 
@@ -22,6 +22,16 @@ export type Lang = "en" | "ru";
 export type League = "khl" | "whl" | "mhl";
 
 export const numBool = (value: boolean): NumericBoolean => (value ? "1" : "0");
+
+const redirect = (location: string, init?: ResponseInit) =>
+  new Response(undefined, {
+    status: 302,
+    ...init,
+    headers: {
+      Location: location,
+      ...init?.headers,
+    },
+  });
 
 const zLang = z
   .ostring()
@@ -161,8 +171,21 @@ export const zHockeyTechParams = z.intersection(
 
 export type HockeyTechParams = z.infer<typeof zHockeyTechParams>;
 
-const getSite = (lang: string) =>
-  `https://${lang === "ru" ? "www" : lang}.khl.ru`;
+const getSite = (league: League, lang: string) =>
+  `https://${
+    // no locale options for whl
+    league === "whl"
+      ? "whl"
+      : league === "mhl"
+        ? // only russian and english for mhl
+          lang === "en"
+          ? "engmhl"
+          : "mhl"
+        : // ru, en, & cn for khl
+          lang === "ru"
+          ? "www"
+          : lang
+  }.khl.ru`;
 
 const router = Router<IRequest, [Env, ExecutionContext]>();
 
@@ -287,14 +310,28 @@ router
       .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
 
     const event = await getchEvent(env, league, seasonId, id);
-    return new Response(undefined, {
-      status: 302,
-      headers: {
-        Location: `${getSite(lang)}/game/${event.outer_stage_id}/${
-          event.khl_id
-        }/${event.game_state_key === State.Finished ? "resume" : "preview"}/`,
-      },
-    });
+    return redirect(
+      `${getSite(league, lang)}/game/${event.outer_stage_id}/${event.khl_id}/${
+        event.game_state_key === State.Finished ? "resume" : "preview"
+      }/`,
+    );
+  })
+  .get("/player/:league/:id", async (req, env) => {
+    const { league, id } = z
+      .object({
+        league: zClientCode,
+        id: zIntAsString,
+      })
+      .parse(req.params);
+    const { lang } = z
+      .object({ lang: zLang })
+      .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
+
+    const player = await getchLightPlayer(env, league, id, lang);
+    if (!player) {
+      return json({ message: "No such player with that ID" }, { status: 404 });
+    }
+    return redirect(`${getSite(league, lang)}/players/${player.khl_id}`);
   })
   .all("*", () => error(404));
 

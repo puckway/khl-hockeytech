@@ -1,5 +1,6 @@
 import {
   APIEventWithInfo,
+  APILightPlayer,
   RESTGetAPIEvent,
   Routes,
   State,
@@ -31,4 +32,34 @@ export const getchEvent = async (
     await env.KV.put(key, JSON.stringify(event), { expirationTtl: ttl });
   }
   return event;
+};
+
+export const getchLightPlayer = async (
+  env: Env,
+  league: League,
+  id: number,
+  locale?: Lang,
+) => {
+  const key = `${locale ?? "en"}-player-${league}-${id}`;
+  let player = await env.KV.get<APILightPlayer>(key, "json");
+  if (!player) {
+    const data = await request<APILightPlayer[]>(
+      league,
+      Routes.playersLight(),
+      { params: { locale: locale ?? "en", "q[id_in][]": id } },
+    );
+    if (data.length === 0) {
+      return null;
+    }
+    // We use find() in case the q[id_in][] parameter silently stops working
+    // https://github.com/shayypy/khl-api/blob/main/mobile-api.md#query-parameters-5
+    player = data.find((p) => p.id === id) ?? null;
+    if (!player) {
+      return null;
+    }
+    await env.KV.put(key, JSON.stringify(player), {
+      expirationTtl: 86_400 * 3,
+    });
+  }
+  return player;
 };
