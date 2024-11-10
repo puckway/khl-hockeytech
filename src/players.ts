@@ -69,7 +69,7 @@ export const getPlayerProfileBio = async (
     birthtown: "",
     careerhigh: "",
     shoots: player.stick?.toUpperCase() ?? "",
-    catches: player.stick?.toUpperCase() ?? "",
+    catches: player.stick ? (player.stick === "l" ? "R" : "L") : "",
     current_team: player.team ? String(player.team.id) : "",
     division: player.team?.division ?? "",
     draft: [],
