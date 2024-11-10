@@ -178,12 +178,10 @@ const getSite = (league: League, lang: string) =>
     league === "whl"
       ? "whl"
       : league === "mhl"
-        ? // only russian and english for mhl
-          lang === "en"
+        ? lang === "en"
           ? "engmhl"
           : "mhl"
-        : // ru, en, & cn for khl
-          lang === "ru"
+        : lang === "ru"
           ? "www"
           : lang
   }.khl.ru`;

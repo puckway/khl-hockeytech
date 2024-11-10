@@ -65,7 +65,10 @@ const scorebar = await client.getScorebar(1, 1);
 
 Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. You may now be asking: how can I construct `khl.ru` URLs for my users?
 
-Instead of pointing your users to `khl.ru` directly, use one of the following redirect paths with the IDs you are provided through this API:
+Consider one of the following approaches:
+
+- **A:** Ship a list of teams with the application so that you already know the `khl_id` and names of every team (you can see our list [here](/src/teams.ts)).
+- **B:** Use the following redirect paths. These are accessible on the proxy base mentioned above.
 
 | Name        | Path                                  |
 |-------------|---------------------------------------|
