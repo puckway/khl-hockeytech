@@ -161,7 +161,10 @@ export const zHockeyTechParams = z.intersection(
 
 export type HockeyTechParams = z.infer<typeof zHockeyTechParams>;
 
-const router = Router();
+const getSite = (lang: string) =>
+  `https://${lang === "ru" ? "www" : lang}.khl.ru`;
+
+const router = Router<IRequest, [Env, ExecutionContext]>();
 
 router
   .get("/", async (request, env) => {
@@ -271,7 +274,7 @@ router
 
     return null;
   })
-  .get("/game-center/:league/:seasonId/:id", async (req, env: Env) => {
+  .get("/game-center/:league/:seasonId/:id", async (req, env) => {
     const { league, seasonId, id } = z
       .object({
         league: zClientCode,
@@ -287,11 +290,9 @@ router
     return new Response(undefined, {
       status: 302,
       headers: {
-        Location: `https://${lang === "ru" ? "www" : lang}.khl.ru/game/${
-          event.outer_stage_id
-        }/${event.khl_id}/${
-          event.game_state_key === State.Finished ? "resume" : "preview"
-        }/`,
+        Location: `${getSite(lang)}/game/${event.outer_stage_id}/${
+          event.khl_id
+        }/${event.game_state_key === State.Finished ? "resume" : "preview"}/`,
       },
     });
   })
