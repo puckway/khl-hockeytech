@@ -12,6 +12,7 @@ import { NumericBoolean } from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import { getPlayerProfileBio } from "./players";
+import { allTeams } from "./teams";
 
 export interface Env {
   KV: KVNamespace;
@@ -329,9 +330,32 @@ router
 
     const player = await getchLightPlayer(env, league, id, lang);
     if (!player) {
-      return json({ message: "No such player with that ID" }, { status: 404 });
+      return json({ message: "No such player" }, { status: 404 });
     }
     return redirect(`${getSite(league, lang)}/players/${player.khl_id}`);
+  })
+  .get("/team/:league/:id", async (req) => {
+    const { league, id } = z
+      .object({
+        league: zClientCode,
+        id: zIntAsString,
+      })
+      .parse(req.params);
+    const { lang } = z
+      .object({ lang: zLang })
+      .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
+
+    const team = allTeams[league].find((t) => t.id === id);
+    if (team) {
+      return redirect(
+        `${getSite(league, lang)}/clubs/${
+          team.slug ?? team.names.en.toLowerCase().replace(/ /g, "_")
+        }/`,
+      );
+    }
+    // I don't think there is a way to get the slug from any API endpoint,
+    // so we have no choice but to bail out here
+    return json({ message: "No such team" }, { status: 404 });
   })
   .all("*", () => error(404));
 

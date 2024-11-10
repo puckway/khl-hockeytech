@@ -8,6 +8,7 @@ export const allTeams: Record<
     names: Record<Lang, string>;
     locations: Record<Lang, string>;
     abbreviations: Record<Lang, string>;
+    slug?: string;
   }[]
 > = {
   khl: [
@@ -164,6 +165,7 @@ export const allTeams: Record<
       names: { en: "Kunlun RS", ru: "Куньлунь РС" },
       locations: { en: "Beijing", ru: "Пекин" },
       abbreviations: { en: "KRS", ru: "КРС" },
+      slug: "kunlun",
     },
     {
       id: 113,
