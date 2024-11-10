@@ -1,6 +1,37 @@
 # khl-hockeytech
 
-This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enables compatibility with HockeyTech consumer clients.
+This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enables compatibility with HockeyTech consumers.
+
+## Coverage (as represented by jonathas/hockeytech functions)
+
+- [x] getDailySchedule
+- [x] getGamesPerDay
+- [x] getRoster
+- [ ] getScorebar
+- [x] getPlayerProfileBio
+- [ ] getPlayerProfileMedia
+- [ ] getPlayerProfileStatsBySeason
+- [ ] getPlayerProfileGameByGameStats
+- [ ] getPlayerProfileCurrentSeasonStats
+- [x] getSeasonList
+- [x] getTeamsBySeason
+- [ ] getSeasonSchedule
+- [ ] getStandingTypes
+- [ ] getStandings
+- [ ] getLeadersSkaters
+- [ ] getLeadersGoalies
+- [ ] getTopSkaters
+- [ ] getTopGoalies
+- [ ] getSkatersByTeam
+- [ ] getGoaliesByTeam
+- [ ] getStreaks
+- [ ] getTransactions
+- [ ] getPlayoff
+- [ ] searchPerson
+- [ ] getGamePreview
+- [ ] getGamePlayByPlay
+- [ ] getGameClock
+- [ ] getGameSummary
 
 ## Nitty Gritty & Usage
 
@@ -32,7 +63,7 @@ const scorebar = await client.getScorebar(1, 1);
 
 ### IDs & User-Facing URLs
 
-Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. This presents a problem: how can I construct `*.khl.ru` URLs for my users?
+Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. You may now be asking: how can I construct `khl.ru` URLs for my users?
 
 Instead of pointing your users to `khl.ru` directly, use one of the following redirect paths with the IDs you are provided through this API:
 
@@ -44,7 +75,7 @@ Instead of pointing your users to `khl.ru` directly, use one of the following re
 
 ### Speed
 
-The KHL API is quite slow, so in order to speed up requests, many common types of data are cached on KV. Here's a short rundown:
+The KHL API can be quite slow, so in order to speed up requests, many common types of data are cached on KV. Here's a brief rundown:
 
 | Resource                      | Cache TTL                 |
 |-------------------------------|---------------------------|
