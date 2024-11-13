@@ -13,6 +13,7 @@ import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import { getPlayerProfileBio } from "./players";
 import { allTeams } from "./teams";
+import { getLeagueSite } from "./league";
 
 export interface Env {
   KV: KVNamespace;
@@ -172,20 +173,6 @@ export const zHockeyTechParams = z.intersection(
 
 export type HockeyTechParams = z.infer<typeof zHockeyTechParams>;
 
-const getSite = (league: League, lang: string) =>
-  `https://${
-    // no locale options for whl
-    league === "whl"
-      ? "whl"
-      : league === "mhl"
-        ? lang === "en"
-          ? "engmhl"
-          : "mhl"
-        : lang === "ru"
-          ? "www"
-          : lang
-  }.khl.ru`;
-
 const router = Router<IRequest, [Env, ExecutionContext]>();
 
 router
@@ -310,9 +297,9 @@ router
 
     const event = await getchEvent(env, league, seasonId, id);
     return redirect(
-      `${getSite(league, lang)}/game/${event.outer_stage_id}/${event.khl_id}/${
-        event.game_state_key === State.Finished ? "resume" : "preview"
-      }/`,
+      `${getLeagueSite(league, lang)}/game/${event.outer_stage_id}/${
+        event.khl_id
+      }/${event.game_state_key === State.Finished ? "resume" : "preview"}/`,
     );
   })
   .get("/player/:league/:id", async (req, env) => {
@@ -330,7 +317,7 @@ router
     if (!player) {
       return json({ message: "No such player" }, { status: 404 });
     }
-    return redirect(`${getSite(league, lang)}/players/${player.khl_id}`);
+    return redirect(`${getLeagueSite(league, lang)}/players/${player.khl_id}`);
   })
   .get("/team/:league/:id", async (req) => {
     const { league, id } = z
@@ -346,7 +333,7 @@ router
     const team = allTeams[league].find((t) => t.id === id);
     if (team) {
       return redirect(
-        `${getSite(league, lang)}/clubs/${
+        `${getLeagueSite(league, lang)}/clubs/${
           team.slug ?? team.names.en.toLowerCase().replace(/ /g, "_")
         }/`,
       );
