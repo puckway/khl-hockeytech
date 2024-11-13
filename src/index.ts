@@ -61,7 +61,9 @@ const zModulekitPlayerViewSchema = z.discriminatedUnion("category", [
   }),
   z.object({
     view: z.literal("player"),
-    person_id: z.number().int(), // To quote jonathas/hockeytech: ????
+    // One is required, this is enforced in a superRefine later
+    person_id: z.number().int().optional(),
+    player_id: z.number().int().optional(),
     category: z.literal("media"),
   }),
   z.object({
@@ -159,6 +161,18 @@ export const zHockeyTechParams = z.intersection(
               if (data.view === "player") {
                 const parsed = zModulekitPlayerViewSchema.safeParse(data);
                 if (!parsed.success) parsed.error.issues.forEach(ctx.addIssue);
+                else if (parsed.data.category === "media") {
+                  if (
+                    parsed.data.player_id === undefined &&
+                    parsed.data.person_id === undefined
+                  ) {
+                    ctx.addIssue({
+                      code: z.ZodIssueCode.custom,
+                      message:
+                        "One of `player_id` or `person_id` is required for `player.media`",
+                    });
+                  }
+                }
               }
             }),
         ),
