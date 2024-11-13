@@ -9,7 +9,7 @@ import {
   getTeamsBySeason,
   modulekitResponse,
 } from "./modulekit";
-import { NumericBoolean, ScorebarMatch } from "hockeytech";
+import { NumericBoolean, PlayerMedia, ScorebarMatch } from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import { getPlayerProfileBio } from "./players";
@@ -265,6 +265,12 @@ router
                     playerId,
                   );
                   return modulekitResponse(params, key, player);
+                }
+                case "media": {
+                  // Is there really any equivalent for this? The only thing I
+                  // can think of is to scrape their personal instagram/vk pages
+                  // periodically, if they even have one
+                  return modulekitResponse(params, key, []);
                 }
                 default:
                   break;
