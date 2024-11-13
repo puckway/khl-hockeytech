@@ -3,12 +3,13 @@ import { z } from "zod";
 import {
   getDailySchedule,
   getGamesPerDay,
+  getScorebar,
   getSeasonList,
   getTeamRoster,
   getTeamsBySeason,
   modulekitResponse,
 } from "./modulekit";
-import { NumericBoolean } from "hockeytech";
+import { NumericBoolean, ScorebarMatch } from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import { getPlayerProfileBio } from "./players";
@@ -228,6 +229,16 @@ router
                 params.team_id,
               );
               return modulekitResponse(params, key, players);
+            }
+            case "scorebar": {
+              const scorebar = await getScorebar(
+                env,
+                league,
+                lang,
+                params.numberofdaysback,
+                params.numberofdaysahead,
+              );
+              return modulekitResponse(params, key, scorebar);
             }
             case "seasons": {
               const seasons = await getSeasonList(env, league, lang);

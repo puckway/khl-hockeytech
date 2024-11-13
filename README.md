@@ -7,7 +7,7 @@ This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enable
 - [x] getDailySchedule
 - [x] getGamesPerDay
 - [x] getRoster
-- [ ] getScorebar
+- [x] getScorebar
 - [x] getPlayerProfileBio
 - [ ] getPlayerProfileMedia
 - [ ] getPlayerProfileStatsBySeason
@@ -76,9 +76,13 @@ Consider one of the following approaches:
 | Player      | `/player/:league/:id`                 |
 | Team        | `/team/:league/:id`                   |
 
+### Caveats (bad data)
+
+Be aware that some values will be empty strings or use placeholder data that may not accurately reflect real state due to limited data availability. This should not create incompatibility with Hockeytech clients, but you may want to create special exceptions when handling these leagues to avoid passing off placeholders as real data.
+
 ### Speed
 
-The KHL API can be quite slow, so in order to speed up requests, many common types of data are cached on KV. Here's a brief rundown:
+The KHL API can be quite slow, so in order to speed up requests, some common types of data are cached on KV. Here's a brief rundown:
 
 | Resource                      | Cache TTL                 |
 |-------------------------------|---------------------------|

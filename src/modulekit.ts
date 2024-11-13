@@ -1,4 +1,7 @@
 import {
+  APIEvent,
+  APIMinimalEvent,
+  APITeamWithDivision,
   RESTGetAPIEvents,
   RESTGetAPIPlayers,
   RESTGetAPITeam,
@@ -19,9 +22,11 @@ import {
   RosterPlayer,
   Season,
   TeamsBySeason,
+  ScorebarMatch,
 } from "hockeytech";
-import { getTeam } from "./teams";
+import { allTeams, getTeam } from "./teams";
 import { doPlayerConversions } from "./players";
+import { getLeagueSite, leagueNames } from "./league";
 
 export const modulekitResponse = <K extends string, T>(
   params: HockeyTechParams,
@@ -57,6 +62,13 @@ export const stateToStatus = (state: State): GameStatus =>
     : state === State.InProgress
       ? GameStatus.InProgress
       : GameStatus.Final;
+
+export const stateToStatusString = (state: State): string =>
+  state === State.Soon
+    ? "Not started"
+    : state === State.InProgress
+      ? "In progress"
+      : "Final";
 
 export const getPeriods = (until: number): Periods => {
   const allPeriods: Period[] = [
@@ -103,6 +115,90 @@ export const getPeriods = (until: number): Periods => {
   ) as unknown as Periods;
 };
 
+type PartialScorebarMatchStatuses = Pick<
+  ScorebarMatch,
+  | "ScheduledTime"
+  | "ScheduledFormattedTime"
+  | "GameStatus"
+  | "GameStatusString"
+  | "GameStatusStringLong"
+  | "Period"
+  | "PeriodNameLong"
+  | "PeriodNameShort"
+>;
+
+export const getEventStatuses = (
+  event: Pick<APIEvent, "start_at" | "period" | "scores" | "game_state_key">,
+): PartialScorebarMatchStatuses => {
+  const d = new Date(event.start_at);
+  const data = {
+    GameStatus: stateToStatus(event.game_state_key),
+    GameStatusString: "",
+    GameStatusStringLong: "",
+    ScheduledTime: d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone: "Europe/Moscow",
+    }),
+    ScheduledFormattedTime: d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Europe/Moscow",
+    }),
+
+    Period: "",
+    PeriodNameLong: "",
+    PeriodNameShort: "",
+  } satisfies PartialScorebarMatchStatuses;
+
+  if (event.game_state_key === State.Finished) {
+    data.GameStatusString = "Final";
+    if (event.scores.bullitt !== null) {
+      data.GameStatusStringLong = "Final SO";
+    } else if (event.scores.overtime !== null) {
+      data.GameStatusStringLong = "Final OT";
+    } else {
+      data.GameStatusStringLong = "Final";
+    }
+  } else if (event.game_state_key === State.Soon) {
+    data.GameStatusString = d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Europe/Moscow",
+    });
+    data.GameStatusStringLong = `${data.ScheduledFormattedTime} MSK`;
+  }
+
+  const periods = [
+    { Period: "1", PeriodNameShort: "1", PeriodNameLong: "1st" },
+    { Period: "2", PeriodNameShort: "2", PeriodNameLong: "2nd" },
+    { Period: "3", PeriodNameShort: "3", PeriodNameLong: "3rd" },
+    { Period: "4", PeriodNameShort: "OT", PeriodNameLong: "OT" },
+    { Period: "5", PeriodNameShort: "SO", PeriodNameLong: "SO" },
+  ];
+  let period: (typeof periods)[number] | undefined;
+  if (event.period === null) period = periods[0];
+  if (event.period === -1) {
+    period =
+      periods[
+        Object.keys(event.scores).indexOf(
+          Object.keys(event.scores).find(
+            (key) => event.scores[key as keyof typeof event.scores] !== null,
+          ) ?? "third_period",
+        )
+      ];
+  }
+  if (period) {
+    Object.assign(data, period);
+  }
+
+  return data;
+};
+
 export const getDailySchedule = async (
   env: Env,
   league: League,
@@ -117,13 +213,13 @@ export const getDailySchedule = async (
     },
   });
   const now = new Date();
+  // biome-ignore format:
+  const empty = emptyKeys("attendance", "capacity", "featured_player_id", "game_letter", "visiting_team_notes", "visiting_video_url", "visiting_video_url_fr", "visiting_webcast_url", "visiting_webcast_url_fr", "home_assistant_coach1", "home_assistant_coach2", "home_audio_url", "home_audio_url_fr", "home_coach", "home_manager", "home_team_notes", "home_video_url", "home_video_url_fr", "home_webcast_url", "home_webcast_url_fr", "imported_id", "intermission", "league_game_notes", "mvp1", "mvp2", "mvp3", "private_notes", "public_notes", "quick_score", "schedule_notes", "schedule_notes_fr", "tickets_url", "tickets_url_fr", "type_id", "venue", "visiting_assistant_coach1", "visiting_assistant_coach2", "visiting_audio_url", "visiting_audio_url_fr", "visiting_coach", "visiting_manager")
   return games.map(({ event }) => {
     const d = new Date(event.event_start_at);
     const home = getTeam(league, event.team_a.id);
     const away = getTeam(league, event.team_b.id);
     return {
-      attendance: "",
-      capacity: "",
       date_played: d.toISOString().split("T")[0],
       date_played_fmt: d.toLocaleDateString(locale, {
         month: "short",
@@ -136,24 +232,16 @@ export const getDailySchedule = async (
             minute: "2-digit",
           })
         : "",
-      featured_player_id: "",
       final: numBool(event.game_state_key === State.Finished),
       forfeit: "0",
       game_clock: "0:00",
       game_id: String(event.id),
-      game_letter: "",
       // This is something that the KHL provides but I'm not sure where at the moment
       game_number: "0",
       game_status: stateToStatus(event.game_state_key),
       goal_list: [],
       goal_summary: [],
-      home_assistant_coach1: "",
-      home_assistant_coach2: "",
-      home_audio_url: "",
-      home_audio_url_fr: "",
-      home_coach: "",
       home_goal_count: event.score.split(":")[0],
-      home_manager: "",
       home_power_play_goals: "0",
       home_power_play_opportunities: "0",
       home_power_plays: "0",
@@ -182,22 +270,11 @@ export const getDailySchedule = async (
       },
       home_team_name: event.team_a.name,
       home_team_nickname: home?.names[locale] ?? event.team_a.name,
-      home_team_notes: "",
-      home_video_url: "",
-      home_video_url_fr: "",
-      home_webcast_url: "",
-      home_webcast_url_fr: "",
       id: String(event.id),
       if_necessary: "0",
-      imported_id: "",
-      intermission: "",
       last_modified: (d > now ? now : d).toISOString().replace("T", " "),
-      league_game_notes: "",
       league_id: "0",
       location: event.location ?? "",
-      mvp1: "",
-      mvp2: "",
-      mvp3: "",
       pending_final: "0",
       period: String(event.period ?? 0),
       periods: getPeriods(event.period ?? 0),
@@ -207,11 +284,6 @@ export const getDailySchedule = async (
       //     event.stage_name?.includes("Плей-офф")) ??
       //     false,
       // ),
-      private_notes: "",
-      public_notes: "",
-      quick_score: "",
-      schedule_notes: "",
-      schedule_notes_fr: "",
       schedule_time: new Date(event.start_at).toLocaleTimeString(locale),
       season_id: String(event.stage_id),
       shootout:
@@ -223,19 +295,9 @@ export const getDailySchedule = async (
       }),
       started: numBool(event.game_state_key === State.InProgress),
       status: stateToStatus(event.game_state_key),
-      tickets_url: "",
-      tickets_url_fr: "",
       timezone: "Europe/Moscow",
-      type_id: "",
-      venue: "",
       venue_location: event.location ?? "",
-      visiting_assistant_coach1: "",
-      visiting_assistant_coach2: "",
-      visiting_audio_url: "",
-      visiting_audio_url_fr: "",
-      visiting_coach: "",
       visiting_goal_count: event.score.split(":")[1],
-      visiting_manager: "",
       visiting_power_play_goals: "0",
       visiting_power_play_opportunities: "0",
       visiting_power_plays: "0",
@@ -264,11 +326,7 @@ export const getDailySchedule = async (
       },
       visiting_team_name: event.team_b.name,
       visiting_team_nickname: away?.names[locale] ?? event.team_b.name,
-      visiting_team_notes: "",
-      visiting_video_url: "",
-      visiting_video_url_fr: "",
-      visiting_webcast_url: "",
-      visiting_webcast_url_fr: "",
+      ...empty,
     };
   });
 };
@@ -339,6 +397,213 @@ export const getGamesPerDay = async (
     });
 };
 
+// It would be cool to use the actual khl.ru scorebar here but I
+// don't think there is a proper API for it, and would require
+// scraping. Instead we can just re-implement `gamesperday` with
+// different types.
+export const getScorebar = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  daysBack: number,
+  daysAhead: number,
+): Promise<ScorebarMatch[]> => {
+  const now = new Date();
+  const startDate = new Date(now.getTime() - daysBack * 86_400_000);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(now.getTime() + daysAhead * 86_400_000);
+  endDate.setHours(23, 59, 59, 0);
+
+  const events = await request<RESTGetAPIEvents>(league, Routes.events(), {
+    params: {
+      locale,
+      "q[start_at_gt_time_from_unixtime]": Math.ceil(
+        startDate.getTime() / 1000,
+      ),
+      "q[start_at_lt_time_from_unixtime]": Math.ceil(endDate.getTime() / 1000),
+    },
+  });
+  if (events.length === 0) return [];
+  events.sort(({ event: a }, { event: b }) => a.start_at - b.start_at);
+
+  const tables = await request<RESTGetAPITables>(league, Routes.tables(), {
+    params: {
+      locale,
+      // `stage_id` does not seem to actually do anything for this endpoint
+      stage_id: events[0].event.stage_id ?? undefined,
+    },
+  });
+
+  // biome-ignore format:
+  const empty = emptyKeys("game_letter", "game_type", "HomeAudioUrl", "HomeVideoUrl", "HomeWebcastUrl", "VisitorAudioUrl", "VisitorVideoUrl", "VisitorWebcastUrl");
+  const games = events.map(({ event }) => {
+    const d = new Date(event.start_at);
+
+    // Compile season stats for `HomeWins` (etc) keys
+    // It could be argued that this should be done outside of the loop, and I
+    // almost did it that way, but I kept it like this so that it would be
+    // cross-stage in case the response contains multiple stages. This could
+    // definitely be accommodated for but for now this is fine.
+    const records = {
+      home: {
+        goals: 0,
+        wins: 0,
+        regulationLosses: 0,
+        overtimeLosses: 0,
+        shootoutLosses: 0,
+      },
+      away: {
+        goals: 0,
+        wins: 0,
+        regulationLosses: 0,
+        overtimeLosses: 0,
+        shootoutLosses: 0,
+      },
+    };
+    for (const table of tables) {
+      const stage = table.stages.find((s) => s.id === event.stage_id);
+      if (stage) {
+        switch (stage.type) {
+          case StageType.Regular: {
+            const homeStats = stage.regular.find(
+              (stat) => stat.id === event.team_a.id,
+            );
+            if (homeStats) {
+              records.home = {
+                goals: Number(homeStats.gf),
+                wins:
+                  Number(homeStats.w) +
+                  Number(homeStats.otw || "0") +
+                  Number(homeStats.sow || "0"),
+                regulationLosses: Number(homeStats.l),
+                overtimeLosses: Number(homeStats.otl || "0"),
+                shootoutLosses: Number(homeStats.sol || "0"),
+              };
+            }
+            const awayStats = stage.regular.find(
+              (stat) => stat.id === event.team_b.id,
+            );
+            if (awayStats) {
+              records.away = {
+                goals: Number(awayStats.gf),
+                wins:
+                  Number(awayStats.w) +
+                  Number(awayStats.otw || "0") +
+                  Number(awayStats.sow || "0"),
+                regulationLosses: Number(awayStats.l),
+                overtimeLosses: Number(awayStats.otl || "0"),
+                shootoutLosses: Number(awayStats.sol || "0"),
+              };
+            }
+            break;
+          }
+          case StageType.Playoff: {
+            const pairs = stage.playoff
+              .flatMap((level) => level.pairs)
+              .filter(
+                (pair) =>
+                  pair.team_a.id === event.team_a.id ||
+                  pair.team_a.id === event.team_b.id ||
+                  pair.team_b.id === event.team_a.id ||
+                  pair.team_b.id === event.team_b.id,
+              );
+            if (pairs.length === 0) break;
+
+            for (const { team_a: a, team_b: b, games } of pairs) {
+              const aKey = a.id === event.team_a.id ? "home" : "away";
+              const bKey = b.id === event.team_b.id ? "away" : "home";
+              for (const game of games) {
+                const lossKey =
+                  game.ots === "OT" ? "overtimeLosses" : "regulationLosses";
+                const [aGoals, bGoals] = game.score.split(":").map(Number);
+                // We assume the game is over since there's no way to tell
+                // unless this endpoint does not populate unfinished games
+                if (aGoals > bGoals) {
+                  records[aKey].wins += 1;
+                  records[bKey][lossKey] += 1;
+                } else if (bGoals > aGoals) {
+                  records[bKey].wins += 1;
+                  records[aKey][lossKey] += 1;
+                }
+                records[aKey].goals += aGoals;
+                records[bKey].goals += bGoals;
+              }
+            }
+            break;
+          }
+          default:
+            break;
+        }
+        break;
+      }
+    }
+
+    return {
+      ...empty,
+      ...getEventStatuses(event),
+      ID: String(event.id),
+      SeasonID: String(event.stage_id ?? ""),
+      Date: d.toISOString().split("T")[0],
+      league_name: leagueNames[league].names[locale],
+      league_code: league,
+      game_number: "0",
+      quick_score: "0",
+      GameDate: d.toLocaleString(locale, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      GameDateISO8601: d.toISOString(),
+      // This is probably not right
+      Ord: d.toISOString().replace("T", " "),
+      Timezone: "Europe/Moscow",
+      TimezoneShort: "MSK",
+      GameClock: "00:00",
+      GameSummaryUrl: String(event.khl_id),
+      HomeCity: event.team_a.location,
+      HomeCode:
+        allTeams[league].find((t) => t.id === event.team_a.id)?.abbreviations[
+          locale
+        ] ?? "",
+      HomeGoals: String(records.home.goals),
+      HomeID: String(event.team_a.id),
+      HomeNickname: event.team_a.name,
+      HomeLogo: event.team_a.image,
+      HomeLongName: `${event.team_a.location} ${event.team_a.name}`,
+      HomeOTLosses: String(records.home.overtimeLosses),
+      HomeRegulationLosses: String(records.home.regulationLosses),
+      HomeShootoutLosses: String(records.home.shootoutLosses),
+      HomeWins: String(records.home.wins),
+      VisitorCity: event.team_b.location,
+      VisitorCode:
+        allTeams[league].find((t) => t.id === event.team_b.id)?.abbreviations[
+          locale
+        ] ?? "",
+      VisitorGoals: String(records.away.goals),
+      VisitorID: String(event.team_b.id),
+      VisitorNickname: event.team_b.name,
+      VisitorLogo: event.team_b.image,
+      VisitorLongName: `${event.team_b.location} ${event.team_b.name}`,
+      VisitorOTLosses: String(records.away.overtimeLosses),
+      VisitorRegulationLosses: String(records.away.regulationLosses),
+      VisitorShootoutLosses: String(records.away.shootoutLosses),
+      VisitorWins: String(records.away.wins),
+      TicketUrl:
+        // It seems like the other leagues don't have online ticket sales
+        league === "khl"
+          ? `${getLeagueSite(league, locale)}/tickets/${d.getUTCMonth() + 1}/${
+              event.team_a.khl_id
+            }/`
+          : "",
+      Intermission: "0",
+      venue_location: "",
+      venue_name: "",
+    } satisfies ScorebarMatch;
+  });
+
+  return games;
+};
+
 export const roleKeyToPosition = (key: Role) =>
   key === Role.Forward ? "F" : key === Role.Defenseman ? "D" : "G";
 
@@ -407,17 +672,108 @@ export const getTeamRoster = async (
   });
 };
 
+interface APITableStageRegularStats {
+  id: number;
+  /** Relative path on an unknown origin */
+  tv_image: string;
+  khl_id: number;
+  gp: string;
+  w: string;
+  otw: string;
+  sow: string;
+  sol: string;
+  otl: string;
+  l: string;
+  pts: string;
+  pts_pct: string;
+  gf: string;
+  ga: string;
+  /** Absolute URL */
+  image: string;
+  name: string;
+  location: string;
+  division: string;
+  division_key: string;
+  conference: string;
+  conference_key: string;
+}
+
+enum PlayoffLevel {
+  Quarterfinal = 3,
+  Semifinal = 2,
+  ConferenceFinal = 1,
+  Final = 0,
+
+  // Aliases - do we want "third" and "fourth" since they
+  // aren't used in nhl convention?
+  FirstRound = 3,
+  SecondRound = 2,
+  // ThirdRound = 1,
+  // FourthRound = 0,
+}
+
+type PlayoffPairTeam = Pick<
+  APITeamWithDivision,
+  "id" | "khl_id" | "name" | "image" | "conference_key"
+> & {
+  tv_image: string;
+  pos: number;
+};
+
+interface APITableStagePlayoffStats {
+  level: PlayoffLevel;
+  title: string;
+  pairs: {
+    games: {
+      /** `a goals`:`b goals` */
+      score: string;
+      /**
+       * Which team is the visitor. If `0`, team A is visiting. If `1`, team B is visiting.
+       */
+      visitor: 0 | 1;
+      event_id: number;
+      ots: "OT" | null;
+    }[];
+    /**
+     * Which team won the bracket. If `0`, team A won. If `1`, team B won.
+     * This correlates to whichever team has the higher value in `score`.
+     */
+    winner: 0 | 1;
+    /** games won by A, games won by B */
+    score: [number, number];
+    teams: [PlayoffPairTeam, PlayoffPairTeam];
+    team_a: PlayoffPairTeam;
+    team_b: PlayoffPairTeam;
+  }[];
+}
+
+interface APITableStageBase {
+  id: number;
+  title: string;
+  type: StageType;
+  regular: APITableStageRegularStats[] | null;
+  playin: null;
+  playoff: APITableStagePlayoffStats[] | null;
+  display_rule: string;
+}
+
+interface APITableStageRegular extends APITableStageBase {
+  type: StageType.Regular;
+  regular: APITableStageRegularStats[];
+  playoff: null;
+}
+
+interface APITableStagePlayoff extends APITableStageBase {
+  type: StageType.Playoff;
+  regular: null;
+  playoff: APITableStagePlayoffStats[];
+}
+
+type APITableStage = APITableStageRegular | APITableStagePlayoff;
+
 type RESTGetAPITables = {
   season: string;
-  stages: {
-    id: number;
-    title: string;
-    type: StageType;
-    regular: Array<unknown> | null;
-    playin: Array<unknown> | null;
-    playoff: Array<unknown> | null;
-    display_rule: string;
-  }[];
+  stages: APITableStage[];
 }[];
 
 export const getSeasonList = async (
