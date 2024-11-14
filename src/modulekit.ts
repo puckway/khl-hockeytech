@@ -771,7 +771,7 @@ interface APITableStagePlayoff extends APITableStageBase {
 
 type APITableStage = APITableStageRegular | APITableStagePlayoff;
 
-type RESTGetAPITables = {
+export type RESTGetAPITables = {
   season: string;
   stages: APITableStage[];
 }[];

@@ -1,9 +1,14 @@
-import type { NumericBoolean, PlayerBio } from "hockeytech";
+import type {
+  NumericBoolean,
+  PlayerBio,
+  PlayerGameByGameStats,
+} from "hockeytech";
 import { Env, Lang, League } from ".";
-import { request } from "./rest";
-import { APIPlayer, RESTGetAPIPlayers, Routes } from "khl-api-types";
+import { APIPlayer, Routes } from "khl-api-types";
 import { allTeams } from "./teams";
-import { emptyKeys } from "./modulekit";
+import { emptyKeys, RESTGetAPITables } from "./modulekit";
+import { getchPlayer } from "./cache";
+import { request } from "./rest";
 
 // Names are in reverse order by default (last name first)
 export const getPlayerName = (player: { name: string }) => {
@@ -62,13 +67,10 @@ export const getPlayerProfileBio = async (
   locale: Lang,
   playerId: number,
 ): Promise<PlayerBio> => {
-  const players = await request<RESTGetAPIPlayers>(league, Routes.players(), {
-    params: { locale, "q[id_in][]": playerId },
-  });
-  if (players.length === 0) {
+  const player = await getchPlayer(env, league, playerId, locale);
+  if (!player) {
     throw Error("no such person/player found");
   }
-  const [{ player }] = players;
 
   const mostRecentTeam = player.team ?? player.teams[player.teams.length - 1];
   const team = allTeams[league].find((t) => t.id === mostRecentTeam?.id);
@@ -115,5 +117,45 @@ export const getPlayerProfileBio = async (
     primary_image: player.image ?? "",
     ...empty,
     ...converted,
+  };
+};
+
+export const getPlayerGameByGame = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  playerId: number,
+): Promise<PlayerGameByGameStats> => {
+  const player = await getchPlayer(env, league, playerId, locale);
+  if (!player) {
+    throw Error("no such person/player found");
+  }
+
+  const allSeasons = await request<RESTGetAPITables>(league, Routes.tables(), {
+    params: { locale },
+  });
+  const seasonYears = player.teams
+    .flatMap((team) => team.seasons.split(","))
+    .filter((s, i, a) => a.indexOf(s) === i)
+    .sort((a, b) => Number(b.split("/")[0]) - Number(a.split("/")[0]));
+
+  const seasons_played: PlayerGameByGameStats["seasons_played"] = [];
+  for (const years of seasonYears) {
+    const season = allSeasons.find((s) => s.season === years);
+    if (season) {
+      seasons_played.push(
+        ...season.stages.map((stage) => ({
+          season_id: stage.id,
+          season_name: `${season.season} ${stage.title}`,
+        })),
+      );
+    }
+  }
+
+  return {
+    seasons_played,
+    // Seems to be empty fairly often in real responses. I'm not sure there's
+    // a good way to get this for the KHL
+    games: [],
   };
 };

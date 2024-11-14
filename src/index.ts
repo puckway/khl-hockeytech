@@ -9,10 +9,16 @@ import {
   getTeamsBySeason,
   modulekitResponse,
 } from "./modulekit";
-import { NumericBoolean, PlayerMedia, ScorebarMatch } from "hockeytech";
+import {
+  NumericBoolean,
+  PlayerGameByGameStats,
+  PlayerMedia,
+  ScorebarMatch,
+  SiteKitPlayerGameByGameStatsResponse,
+} from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
-import { getPlayerProfileBio } from "./players";
+import { getPlayerGameByGame, getPlayerProfileBio } from "./players";
 import { allTeams } from "./teams";
 import { getLeagueSite } from "./league";
 
@@ -285,6 +291,15 @@ router
                   // can think of is to scrape their personal instagram/vk pages
                   // periodically, if they even have one
                   return modulekitResponse(params, key, []);
+                }
+                case "gamebygame": {
+                  const stats = await getPlayerGameByGame(
+                    env,
+                    league,
+                    lang,
+                    playerId,
+                  );
+                  return modulekitResponse(params, key, stats);
                 }
                 default:
                   break;

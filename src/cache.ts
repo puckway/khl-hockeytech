@@ -1,10 +1,10 @@
 import {
   APIEventWithInfo,
   APILightPlayer,
-  APITeam,
+  APIPlayer,
   RESTGetAPIEvent,
+  RESTGetAPIPlayers,
   RESTGetAPIPlayersLight,
-  RESTGetAPITeam,
   Routes,
   State,
 } from "khl-api-types";
@@ -37,13 +37,36 @@ export const getchEvent = async (
   return event;
 };
 
-export const getchLightPlayer = async (
+export const getchPlayer = async (
   env: Env,
   league: League,
   id: number,
   locale?: Lang,
 ) => {
   const key = `${locale ?? "en"}-player-${league}-${id}`;
+  let player = await env.KV.get<APIPlayer>(key, "json");
+  if (!player) {
+    const data = await request<RESTGetAPIPlayers>(league, Routes.players(), {
+      params: { locale: locale ?? "en", "q[id_in][]": id },
+    });
+    if (data.length === 0) {
+      return null;
+    }
+    ({ player } = data[0]);
+    await env.KV.put(key, JSON.stringify(player), {
+      expirationTtl: 86_400 * 3,
+    });
+  }
+  return player;
+};
+
+export const getchLightPlayer = async (
+  env: Env,
+  league: League,
+  id: number,
+  locale?: Lang,
+) => {
+  const key = `${locale ?? "en"}-player-light-${league}-${id}`;
   let player = await env.KV.get<APILightPlayer>(key, "json");
   if (!player) {
     const data = await request<RESTGetAPIPlayersLight>(
