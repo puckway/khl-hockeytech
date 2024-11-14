@@ -9,7 +9,7 @@ This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enable
 - [x] getRoster
 - [x] getScorebar
 - [x] getPlayerProfileBio
-- [x] getPlayerProfileMedia
+- [x] getPlayerProfileMedia - returns empty list
 - [ ] getPlayerProfileStatsBySeason
 - [ ] getPlayerProfileGameByGameStats
 - [ ] getPlayerProfileCurrentSeasonStats
