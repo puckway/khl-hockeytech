@@ -21,7 +21,7 @@ import { State } from "khl-api-types";
 import {
   getPlayerGameByGame,
   getPlayerProfileBio,
-  getPlayerProfileMedia,
+  getPlayerSeasonStats,
 } from "./players";
 import { allTeams } from "./teams";
 import { getLeagueSite } from "./league";
@@ -300,6 +300,15 @@ router
                   // );
                   const media: PlayerMedia[] = [];
                   return modulekitResponse(params, key, media);
+                }
+                case "seasonstats": {
+                  const stats = await getPlayerSeasonStats(
+                    env,
+                    league,
+                    lang,
+                    playerId,
+                  );
+                  return modulekitResponse(params, key, stats);
                 }
                 case "gamebygame": {
                   const stats = await getPlayerGameByGame(

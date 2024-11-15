@@ -1,12 +1,19 @@
 import type {
+  GoalieSeasonStat,
+  GoalieSeasonStatTotal,
   NumericBoolean,
   PlayerBio,
   PlayerGameByGameStats,
   PlayerMedia,
+  PlayerSeasonStat,
+  PlayerSeasonStatTotal,
+  PlayerStatsBySeason,
+  SkaterSeasonStat,
+  SkaterSeasonStatTotal,
 } from "hockeytech";
-import { Env, Lang, League } from ".";
-import { APIPlayer, Routes } from "khl-api-types";
-import { allTeams } from "./teams";
+import { Env, Lang, League, numBool } from ".";
+import { APIPlayer, Role, Routes, StageType, StatId } from "khl-api-types";
+import { allTeams, getTeam } from "./teams";
 import { emptyKeys, RESTGetAPITables } from "./modulekit";
 import { getchPlayer } from "./cache";
 import { request } from "./rest";
@@ -93,7 +100,7 @@ export const getPlayerProfileBio = async (
 
   const converted = doPlayerConversions(player);
   return {
-    active: hasRecentSeason ? "1" : "0",
+    active: numBool(hasRecentSeason),
     bio: `${converted.name} is a ${player.role} from ${
       player.country
     }, currently playing for ${
@@ -207,5 +214,304 @@ export const getPlayerGameByGame = async (
     // Seems to be empty fairly often in real responses. I'm not sure there's
     // a good way to get this for the KHL
     games: [],
+  };
+};
+
+export const getPlayerSeasonStats = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  playerId: number,
+): Promise<PlayerStatsBySeason> => {
+  const player = await getchPlayer(env, league, playerId, locale);
+  if (!player) {
+    throw Error("no such person/player found");
+  }
+
+  const allSeasons = await request<RESTGetAPITables>(league, Routes.tables(), {
+    params: { locale },
+  });
+  allSeasons.sort(
+    (a, b) => Number(b.season.split("/")[0]) - Number(a.season.split("/")[0]),
+  );
+  const latestSeason = allSeasons[0];
+  const latestStage = latestSeason.stages[latestSeason.stages.length - 1];
+  const regularStage = latestSeason.stages[0];
+  const playoffStage: typeof regularStage | undefined = latestSeason.stages[1];
+
+  // It doesn't look like the KHL offers a way to get career stats for a
+  // player, so we're just going to include the latest season and a totals
+  // object for compliance.
+  const stats: Array<PlayerSeasonStat | PlayerSeasonStatTotal> = [];
+
+  if (player.role_key === Role.Goaltender) {
+    const numbers: Pick<
+      GoalieSeasonStatTotal,
+      | "assists"
+      | "gaa"
+      | "games_played"
+      | "goals"
+      | "goals_against"
+      | "goals_against_average"
+      | "losses"
+      | "minutes_played"
+      | "ot"
+      | "ot_losses"
+      | "penalty_minutes"
+      | "points"
+      | "savepct"
+      | "saves"
+      | "seconds_played"
+      | "shootout_goals_against"
+      | "shootout_losses"
+      | "shootout_saves"
+      | "shootout_shots"
+      | "shots_against"
+      | "shotspct"
+      | "shutouts"
+      | "sosavepct"
+      | "ties"
+      | "total_losses"
+      | "wins"
+    > = {
+      assists: 0,
+      gaa: "0.00",
+      games_played: 0,
+      goals: 0,
+      goals_against: 0,
+      goals_against_average: "0.00",
+      losses: 0,
+      minutes_played: 0,
+      ot: 0,
+      ot_losses: 0,
+      penalty_minutes: 0,
+      points: 0,
+      savepct: "0.000",
+      saves: 0,
+      seconds_played: 0,
+      shootout_goals_against: 0,
+      shootout_losses: 0,
+      shootout_saves: 0,
+      shootout_shots: 0,
+      shots_against: 0,
+      shotspct: "0.000",
+      shutouts: 0,
+      sosavepct: "0.000",
+      ties: 0,
+      total_losses: 0,
+      wins: 0,
+    };
+    type StatKeys = keyof typeof numbers;
+    for (const stat of player.stats) {
+      switch (stat.id) {
+        case StatId.Points:
+          numbers.points = stat.val;
+          break;
+        case StatId.PenaltyInMinutes:
+          numbers.penalty_minutes = stat.val;
+          break;
+        case StatId.TimeOnIce:
+          numbers.seconds_played = Math.floor(stat.val * 1000);
+          break;
+        case StatId.GamesPlayed:
+          numbers.games_played = stat.val;
+          break;
+        case StatId.Goals:
+          numbers.goals = stat.val;
+          break;
+        case StatId.GoalsAllowed:
+          numbers.goals_against = stat.val;
+          break;
+        case StatId.Losses:
+          numbers.losses = stat.val;
+          numbers.total_losses += stat.val;
+          break;
+        case StatId.Saves:
+          numbers.saves = stat.val;
+          break;
+        case StatId.Shutouts:
+          numbers.shutouts = stat.val;
+          break;
+        case StatId.Wins:
+          numbers.wins = stat.val;
+          break;
+        default:
+          break;
+      }
+    }
+    numbers.assists = Math.max(numbers.points - numbers.goals, 0);
+
+    numbers.gaa = (
+      (numbers.goals_against * 60) /
+      (numbers.minutes_played || 1)
+    ).toFixed(2);
+    numbers.goals_against_average = numbers.gaa;
+
+    numbers.shots_against = numbers.saves + numbers.goals_against;
+    numbers.savepct = (numbers.saves / (numbers.shots_against || 1)).toFixed(3);
+
+    stats.push(
+      {
+        ...(Object.fromEntries(
+          Object.entries(numbers).map(([key, val]) => [key, String(val)]),
+        ) as Pick<GoalieSeasonStat, StatKeys>),
+        season_id: String(latestStage.id),
+        season_name: `${latestSeason.season} ${latestStage.title}`,
+        shortname: latestSeason.season,
+        career: "1",
+        playoff: numBool(latestStage.type === StageType.Playoff),
+        veteran: "",
+        veteran_status: "",
+        team_city: player.team.location,
+        team_code: getTeam(league, player.team.id)?.abbreviations[locale] ?? "",
+        team_id: String(player.team.id),
+        team_name: `${player.team.location} ${player.team.name}`,
+        team_nickname: player.team.name,
+        division: player.team.division ?? "",
+        max_start_date: "",
+      } satisfies GoalieSeasonStat,
+      {
+        ...numbers,
+        season_name: "Total",
+        shortname: "Total",
+        playoff: latestStage.title === StageType.Playoff ? 1 : 0,
+        season_id: latestStage.id,
+        veteran_status: 0,
+        career: 1,
+        max_start_date: 0,
+      } satisfies GoalieSeasonStatTotal,
+    );
+  } else {
+    const numbers: Pick<
+      SkaterSeasonStatTotal,
+      | "assists"
+      | "empty_net_goals"
+      | "faceoff_attempts"
+      | "faceoff_pct"
+      | "faceoff_wins"
+      | "first_goals"
+      | "game_tieing_goals"
+      | "game_winning_goals"
+      | "games_played"
+      | "goals"
+      | "hits"
+      | "insurance_goals"
+      | "overtime_goals"
+      | "penalty_minutes"
+      | "penalty_minutes_per_game"
+      | "plus_minus"
+      | "points"
+      | "points_per_game"
+      | "power_play_assists"
+      | "power_play_goals"
+      | "shooting_percentage"
+      | "shootout_attempts"
+      | "shootout_goals"
+      | "shootout_percentage"
+      | "shootout_winning_goals"
+      | "short_handed_assists"
+      | "short_handed_goals"
+      | "shots"
+      | "unassisted_goals"
+      | "jersey_number"
+    > = {
+      assists: 0,
+      games_played: 0,
+      goals: 0,
+      penalty_minutes: 0,
+      points: 0,
+      empty_net_goals: 0,
+      faceoff_attempts: 0,
+      faceoff_pct: 0,
+      faceoff_wins: 0,
+      first_goals: 0,
+      game_tieing_goals: 0,
+      game_winning_goals: 0,
+      hits: 0,
+      insurance_goals: 0,
+      overtime_goals: 0,
+      penalty_minutes_per_game: "0.00",
+      plus_minus: 0,
+      points_per_game: "0.00",
+      power_play_assists: 0,
+      power_play_goals: 0,
+      shooting_percentage: "0.0",
+      shootout_attempts: 0,
+      shootout_goals: 0,
+      shootout_percentage: "0.0",
+      shootout_winning_goals: 0,
+      short_handed_assists: 0,
+      short_handed_goals: 0,
+      shots: 0,
+      unassisted_goals: 0,
+      jersey_number: player.shirt_number ?? 0,
+    };
+    type StatKeys = keyof typeof numbers;
+    for (const stat of player.stats) {
+      switch (stat.id) {
+        case StatId.Points:
+          numbers.points = stat.val;
+          break;
+        case StatId.PenaltyInMinutes:
+          numbers.penalty_minutes = stat.val;
+          break;
+        case StatId.GamesPlayed:
+          numbers.games_played = stat.val;
+          break;
+        case StatId.Goals:
+          numbers.goals = stat.val;
+          break;
+        case StatId.FaceoffsWon:
+          numbers.faceoff_wins = stat.val;
+          break;
+        case StatId.PlusMinus:
+          numbers.plus_minus = stat.val;
+          break;
+        default:
+          break;
+      }
+    }
+    numbers.assists = Math.max(numbers.points - numbers.goals, 0);
+    numbers.points_per_game = (
+      numbers.points / (numbers.games_played || 1)
+    ).toFixed(2);
+
+    stats.push(
+      {
+        ...(Object.fromEntries(
+          Object.entries(numbers).map(([key, val]) => [key, String(val)]),
+        ) as Pick<SkaterSeasonStat, StatKeys>),
+        season_id: String(latestStage.id),
+        season_name: `${latestSeason.season} ${latestStage.title}`,
+        shortname: latestSeason.season,
+        active: "1",
+        career: "1",
+        playoff: numBool(latestStage.type === StageType.Playoff),
+        veteran: "",
+        veteran_status: "",
+        team_city: player.team.location,
+        team_code: getTeam(league, player.team.id)?.abbreviations[locale] ?? "",
+        team_id: String(player.team.id),
+        team_name: `${player.team.location} ${player.team.name}`,
+        team_nickname: player.team.name,
+        division: player.team.division ?? "",
+        max_start_date: "",
+      } satisfies SkaterSeasonStat,
+      {
+        ...numbers,
+        season_name: "Total",
+        shortname: "Total",
+        playoff: latestStage.title === StageType.Playoff ? 1 : 0,
+        season_id: latestStage.id,
+        veteran_status: 0,
+        career: 1,
+        max_start_date: 0,
+      } satisfies SkaterSeasonStatTotal,
+    );
+  }
+
+  return {
+    regular: latestStage.id === regularStage?.id ? stats : undefined,
+    playoff: latestStage.id === playoffStage?.id ? stats : undefined,
   };
 };

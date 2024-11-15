@@ -11,7 +11,7 @@ This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enable
 - [x] getPlayerProfileBio
 - [x] getPlayerProfileMedia
   - This currently returns an empty list, but in the future it will return videos & images of game clips. <!-- - This returns "quotes" which are basically just clips/moments from games. For videos, `url` is an address on the worker's origin or a media server. Videos are always type `mp4` and images are always type `jpg`. -->
-- [ ] getPlayerProfileStatsBySeason
+- [x] getPlayerProfileStatsBySeason
 - [x] getPlayerProfileGameByGameStats
 - [ ] getPlayerProfileCurrentSeasonStats
 - [x] getSeasonList
