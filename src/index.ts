@@ -9,13 +9,7 @@ import {
   getTeamsBySeason,
   modulekitResponse,
 } from "./modulekit";
-import {
-  NumericBoolean,
-  PlayerGameByGameStats,
-  PlayerMedia,
-  ScorebarMatch,
-  SiteKitPlayerGameByGameStatsResponse,
-} from "hockeytech";
+import { NumericBoolean, PlayerMedia } from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import {
@@ -25,6 +19,7 @@ import {
 } from "./players";
 import { allTeams } from "./teams";
 import { getLeagueSite } from "./league";
+import { M3uParser } from "m3u-parser-generator";
 
 export interface Env {
   KV: KVNamespace;
@@ -328,6 +323,7 @@ router
               break;
           }
         } catch (e) {
+          console.error(e);
           // I don't like this but this is how HT returns errors, complete with a 200 response.
           return modulekitResponse(params, key, { error: String(e) });
         }
@@ -347,23 +343,47 @@ router
 
     return null;
   })
-  .get("/m3u8", async (request, env) => {
-    const { playlist: playlistUrl } = z
-      .object({
-        playlist: z
-          .string()
-          .url()
-          .transform((url) => new URL(url))
-          .refine(
-            (url) =>
-              ["bl.webcaster.pro"].includes(url.host) &&
-              url.pathname.endsWith(".m3u8"),
-          ),
-      })
-      .parse(Object.fromEntries(new URL(request.url).searchParams.entries()));
+  // .get("/m3u8", async (request, env) => {
+  //   const { playlist: playlistUrl } = z
+  //     .object({
+  //       playlist: z
+  //         .string()
+  //         .url()
+  //         .transform((url) => new URL(url))
+  //         .refine(
+  //           (url) =>
+  //             ["bl.webcaster.pro"].includes(url.host) &&
+  //             url.pathname.endsWith(".m3u8"),
+  //         ),
+  //     })
+  //     .parse(Object.fromEntries(new URL(request.url).searchParams.entries()));
 
-    const [, , , identifier] = playlistUrl.pathname.split("/");
-  })
+  //   const [, , , identifier] = playlistUrl.pathname.split("/");
+  //   const filename = `${identifier}.mp4`;
+
+  //   const response = await fetch(playlistUrl, {
+  //     method: "GET",
+  //     headers: {
+  //       Origin: "https://api-video.khl.ru",
+  //       Referer: "https://api-video.khl.ru/",
+  //     },
+  //   });
+  //   if (!response.ok) {
+  //     return json(
+  //       { message: response.statusText, raw: await response.text() },
+  //       { status: response.status },
+  //     );
+  //   }
+
+  //   const playlist = M3uParser.parse(await response.text());
+
+  //   // return new Response(body, {
+  //   //   headers: {
+  //   //     "Content-Type": "video/mp4",
+  //   //     "Content-Disposition": `attachment; filename="${filename}"`,
+  //   //   },
+  //   // });
+  // })
   .get("/game-center/:league/:seasonId/:id", async (req, env) => {
     const { league, seasonId, id } = z
       .object({

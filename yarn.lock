@@ -517,6 +517,11 @@ khl-api-types@^1.1.2:
   resolved "https://registry.yarnpkg.com/khl-api-types/-/khl-api-types-1.1.2.tgz#a9a3c9b25d9f1816d6b8fa96a1d4b8f691419aed"
   integrity sha512-LZwL15QitaTpQXPECwjsKLfJzpeTZMZ2cvcweHbamhOU3+TvHCLRfH/s0Xwq+i5vwtcLombAEPS5Wgk+r5Fr4g==
 
+m3u-parser-generator@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/m3u-parser-generator/-/m3u-parser-generator-2.0.0.tgz#936a9bb13ed37c338ff4fbc9641a9888c783ba5d"
+  integrity sha512-TMuxMl53JYBgKqkPEMK/fnow6U1hRkPl69xqfDTVpP+RQK5kAQeSSgl15CNMzSRreWgodV945MDfa8ZxIgU41A==
+
 magic-string@^0.25.3:
   version "0.25.9"
   resolved "https://registry.yarnpkg.com/magic-string/-/magic-string-0.25.9.tgz#de7f9faf91ef8a1c91d02c2e5314c8277dbcdd1c"
