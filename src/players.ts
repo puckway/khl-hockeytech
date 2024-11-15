@@ -2,6 +2,7 @@ import type {
   NumericBoolean,
   PlayerBio,
   PlayerGameByGameStats,
+  PlayerMedia,
 } from "hockeytech";
 import { Env, Lang, League } from ".";
 import { APIPlayer, Routes } from "khl-api-types";
@@ -118,6 +119,55 @@ export const getPlayerProfileBio = async (
     ...empty,
     ...converted,
   };
+};
+
+export const getPlayerProfileMedia = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  playerId: number,
+  origin: string,
+): Promise<PlayerMedia[]> => {
+  const player = await getchPlayer(env, league, playerId, locale);
+  if (!player) {
+    throw Error("no such person/player found");
+  }
+
+  return player.quotes
+    .filter((quote) => quote.free)
+    .map((quote) => {
+      let url: string;
+      let media_type: string;
+      if (quote.m3u8_url) {
+        media_type = "mp4";
+        const playlistProxy = new URL(origin);
+        playlistProxy.pathname = "/m3u8";
+        playlistProxy.searchParams.set("playlist", quote.m3u8_url);
+        url = playlistProxy.href;
+      } else {
+        media_type = "jpg";
+        url = quote.image_url;
+      }
+
+      return {
+        id: String(quote.id),
+        person_id: String(playerId),
+        media_type,
+        lang_id: "0",
+        title: quote.description,
+        uploaded: new Date(quote.finish_ts).toISOString(),
+        is_primary: "1",
+        uploaded_name: `${quote.id}.${media_type}`,
+        file_name: `${quote.id}.${media_type}`,
+        modified: new Date(quote.finish_ts).toISOString(),
+        deleted: "0",
+        height: "720",
+        width: "1280",
+        player_id: String(playerId),
+        thumb: quote.image_url,
+        url,
+      };
+    });
 };
 
 export const getPlayerGameByGame = async (

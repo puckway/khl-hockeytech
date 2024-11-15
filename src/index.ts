@@ -18,7 +18,11 @@ import {
 } from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
-import { getPlayerGameByGame, getPlayerProfileBio } from "./players";
+import {
+  getPlayerGameByGame,
+  getPlayerProfileBio,
+  getPlayerProfileMedia,
+} from "./players";
 import { allTeams } from "./teams";
 import { getLeagueSite } from "./league";
 
@@ -287,10 +291,15 @@ router
                   return modulekitResponse(params, key, player);
                 }
                 case "media": {
-                  // Is there really any equivalent for this? The only thing I
-                  // can think of is to scrape their personal instagram/vk pages
-                  // periodically, if they even have one
-                  return modulekitResponse(params, key, []);
+                  // const media = await getPlayerProfileMedia(
+                  //   env,
+                  //   league,
+                  //   lang,
+                  //   playerId,
+                  //   new URL(request.url).origin,
+                  // );
+                  const media: PlayerMedia[] = [];
+                  return modulekitResponse(params, key, media);
                 }
                 case "gamebygame": {
                   const stats = await getPlayerGameByGame(
@@ -328,6 +337,23 @@ router
     }
 
     return null;
+  })
+  .get("/m3u8", async (request, env) => {
+    const { playlist: playlistUrl } = z
+      .object({
+        playlist: z
+          .string()
+          .url()
+          .transform((url) => new URL(url))
+          .refine(
+            (url) =>
+              ["bl.webcaster.pro"].includes(url.host) &&
+              url.pathname.endsWith(".m3u8"),
+          ),
+      })
+      .parse(Object.fromEntries(new URL(request.url).searchParams.entries()));
+
+    const [, , , identifier] = playlistUrl.pathname.split("/");
   })
   .get("/game-center/:league/:seasonId/:id", async (req, env) => {
     const { league, seasonId, id } = z
