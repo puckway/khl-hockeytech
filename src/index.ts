@@ -455,9 +455,9 @@ router
     const team = allTeams[league].find((t) => t.id === id);
     if (team) {
       return redirect(
-        `${getLeagueSite(league, lang)}/clubs/${
-          team.slug ?? team.names.en.toLowerCase().replace(/ /g, "_")
-        }/`,
+        `${getLeagueSite(league, lang)}/${
+          league === "khl" ? "clubs" : "teams"
+        }/${team.slug ?? team.names.en.toLowerCase().replace(/ /g, "_")}/`,
       );
     }
     // I don't think there is a way to get the slug from any API endpoint,
