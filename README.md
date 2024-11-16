@@ -42,7 +42,9 @@ Use `khl`, `mhl`, or `whl` as both your client code and key, depending on which 
 
 ### Locale
 
-This service supports `en` and `ru` locales. If an unsupported locale is specified, `en` will be used instead.
+This service supports `en` and `ru` locales. If an unsupported locale is specified, `en` will be used instead. Be aware that some values are only available in the `ru` locale (like season titles and quotes).
+
+The `Copyright.required_link` value in each response adapts to your provided client code and locale. For example, for a request to `khl` with the `ru` locale, you will see `https://www.khl.ru` here, but a request to `mhl` with the `en` locale will result in `https://engmhl.khl.ru` instead. You can use this value to construct static URLs that do not require custom IDs (see [IDs](#ids--user-facing-urls)). Unfortunately the WHL website is not available in non-Russian locales.
 
 ### URL Construction
 
@@ -66,16 +68,13 @@ const scorebar = await client.getScorebar(1, 1);
 
 Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. You may now be asking: how can I construct `khl.ru` URLs for my users?
 
-Consider one of the following approaches:
+| Name             | Path                                  |
+|------------------|---------------------------------------|
+| Game Center      | `/game-center/:league/:season_id/:id` |
+| Player           | `/player/:league/:id`                 |
+| Team<sup>1</sup> | `/team/:league/:id`                   |
 
-- **A:** Ship a list of teams with the application so that you already know the `khl_id` and names of every team (you can see our list [here](/src/teams.ts)).
-- **B:** Use the following redirect paths. These are accessible on the proxy base mentioned above.
-
-| Name        | Path                                  |
-|-------------|---------------------------------------|
-| Game Center | `/game-center/:league/:season_id/:id` |
-| Player      | `/player/:league/:id`                 |
-| Team        | `/team/:league/:id`                   |
+<sup>1</sup>: You may instead consider shipping a list of teams with your application so that you already know the `khl_id` and name of every team (you can see our list [here](/src/teams.ts)).
 
 ### Caveats (bad data)
 
