@@ -5,6 +5,7 @@ import {
   getGamesPerDay,
   getScorebar,
   getSeasonList,
+  getSeasonSchedule,
   getTeamRoster,
   getTeamsBySeason,
   modulekitResponse,
@@ -328,6 +329,16 @@ router
                   break;
               }
               break;
+            }
+            case "schedule": {
+              const schedule = await getSeasonSchedule(
+                env,
+                league,
+                lang,
+                params.season_id,
+                params.team_id,
+              );
+              return modulekitResponse(params, key, schedule);
             }
             default:
               break;

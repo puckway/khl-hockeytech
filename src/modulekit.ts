@@ -23,6 +23,7 @@ import {
   Season,
   TeamsBySeason,
   ScorebarMatch,
+  Schedule,
 } from "hockeytech";
 import { allTeams, getTeam } from "./teams";
 import { doPlayerConversions } from "./players";
@@ -850,4 +851,150 @@ export const getTeamsBySeason = async (
         .trim(),
     };
   });
+};
+
+export const getSeasonSchedule = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  seasonId: number,
+  teamId?: number,
+): Promise<Schedule[]> => {
+  const allKey = `${locale ?? "en"}-schedule-${league}-${seasonId}`;
+  const allCached = await env.KV.get<Schedule[]>(allKey, "json");
+  if (allCached)
+    return teamId === undefined
+      ? allCached
+      : allCached.filter(
+          (game) =>
+            game.home_team === String(teamId) ||
+            game.visiting_team === String(teamId),
+        );
+
+  const key = `${allKey}${teamId ?? ""}`;
+  const cached = await env.KV.get<Schedule[]>(key, "json");
+  if (cached) return cached;
+
+  const events: APIEvent[] = [];
+  let page = 1;
+  while (true) {
+    const data = await request<RESTGetAPIEvents>(league, Routes.events(), {
+      params: {
+        locale,
+        stage_id: seasonId,
+        "q[team_a_or_team_b_in][]": teamId,
+        page,
+      },
+    });
+    events.push(...data.map(({ event }) => event));
+    if (data.length < 16) {
+      break;
+    }
+    page += 1;
+  }
+  events.sort((a, b) => a.start_at - b.start_at);
+
+  // biome-ignore format:
+  const empty = emptyKeys("schedule_notes", "game_type", "game_letter", "home_audio_url", "home_video_url", "visiting_audio_url", "visiting_video_url", "notes_text", "venue_name", "venue_url", "home_team_division_long", "home_team_division_short", "visiting_team_division_long", "visiting_team_division_short");
+  const formatted = events.map((event) => {
+    const date = new Date(event.start_at);
+    const teamA = getTeam(league, event.team_a.id);
+    const teamB = getTeam(league, event.team_b.id);
+
+    const statuses = getEventStatuses(event);
+
+    return {
+      ...empty,
+      client_code: league,
+      id: String(event.id),
+      game_id: String(event.id),
+      season_id: String(event.stage_id ?? seasonId),
+      quick_score: "0",
+      date_played: `${date.getUTCFullYear()}-${
+        date.getUTCMonth() + 1
+      }-${date.getUTCDate()}`,
+      date: date.toLocaleDateString(locale, {
+        month: "short",
+        day: "numeric",
+      }),
+      date_with_day: date.toLocaleDateString(locale, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
+      date_time_played: date,
+      GameDateISO8601: date,
+      home_team: String(event.team_a.id),
+      visiting_team: String(event.team_b.id),
+      home_goal_count: event.score.split(":")[0],
+      visiting_goal_count: event.score.split(":")[1],
+      period: statuses.Period,
+      overtime: numBool(event.scores.overtime !== null),
+      shootout: numBool(event.scores.bullitt !== null),
+      schedule_time: statuses.ScheduledTime,
+      game_clock: "00:00",
+      timezone: "Europe/Moscow",
+      // The KHL does keep track of this but it's not in this endpoint
+      attendance: "0",
+      // same as above
+      game_number: "0",
+      status: statuses.GameStatus,
+      location: event.team_a.location,
+      game_status: statuses.GameStatusString,
+      intermission: "0",
+      if_necessary: "0",
+      period_trans: statuses.Period,
+      started: numBool(event.game_state_key !== State.InProgress),
+      final: numBool(event.game_state_key === State.Finished),
+      tickets_url:
+        league === "khl"
+          ? `${getLeagueSite(league, locale)}/tickets/${
+              date.getUTCMonth() + 1
+            }/${event.team_a.khl_id}/`
+          : "",
+      home_webcast_url: `https://video.khl.ru/events/${event.id}`,
+      visiting_webcast_url: `https://video.khl.ru/events/${event.id}`,
+      home_team_name: `${event.team_a.location} ${event.team_a.name}`,
+      home_team_code: teamA?.abbreviations[locale] ?? "",
+      home_team_nickname: event.team_a.name,
+      home_team_city: event.team_a.location,
+      visiting_team_name: `${event.team_b.location} ${event.team_b.name}`,
+      visiting_team_code: teamB?.abbreviations[locale] ?? "",
+      visiting_team_nickname: event.team_b.name,
+      visiting_team_city: event.team_b.location,
+      use_shootouts: "1",
+      venue_location: event.team_a.location,
+      // valid value for a hockeytech response, but feels wrong
+      last_modified: "0000-00-00 00:00:00",
+      scheduled_time: statuses.ScheduledFormattedTime,
+      mobile_calendar: `${getLeagueSite(league, locale)}/calendar/ics/${
+        event.team_a.khl_id
+      };${event.team_b.khl_id};/`,
+    } satisfies Schedule;
+  });
+
+  const firstStart = events.find(
+    (event) => event.game_state_key === State.Soon,
+  )?.start_at;
+  const hasLiveGames =
+    events.find((event) => event.game_state_key === State.InProgress) !==
+    undefined;
+
+  // This is a lot of data, but it shouldn't exceed the 25mib limit for a KV
+  // value. In testing, the response for every game in the 2024/25 KHL season
+  // was 1.15mib (including modulekit wrapper data).
+  await env.KV.put(key, JSON.stringify(formatted), {
+    expirationTtl: hasLiveGames
+      ? 600
+      : firstStart === undefined
+        ? // 24 hours
+          3600 * 24
+        : undefined,
+    expiration:
+      !hasLiveGames && firstStart !== undefined
+        ? Math.floor(firstStart / 1000)
+        : undefined,
+  });
+
+  return formatted;
 };

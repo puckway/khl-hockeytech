@@ -16,7 +16,7 @@ This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enable
 - [x] getPlayerProfileCurrentSeasonStats
 - [x] getSeasonList
 - [x] getTeamsBySeason
-- [ ] getSeasonSchedule
+- [x] getSeasonSchedule
 - [ ] getStandingTypes
 - [ ] getStandings
 - [ ] getLeadersSkaters
@@ -85,13 +85,15 @@ Be aware that some values will be empty strings or use placeholder data that may
 
 The KHL API can be quite slow, so in order to speed up requests, some common types of data are cached on KV. Here's a brief rundown:
 
-| Resource                      | Cache TTL                 |
-|-------------------------------|---------------------------|
-| Players/player details        | 3 days                    |
-| Game schedule (no live games) | Time until start or 1 day |
-| Game schedule (live games)    | 5 minutes                 |
-| Game details/pxp (not live)   | Time until start or 1 day |
-| Game details/pxp (live)       | 1 minute (minimum)        |
-| Seasons                       | 1 week                    |
-| Teams/team details            | 1 day                     |
-| Standings                     | 1 hour                    |
+| Resource                                  | Cache TTL                 |
+|-------------------------------------------|---------------------------|
+| Players/player details                    | 3 days                    |
+| Game schedule<sup>1</sup> (no live games) | Time until start or 1 day |
+| Game schedule<sup>1</sup> (live games)    | 10 minutes                |
+| Game details/pxp (not live)               | Time until start or 1 day |
+| Game details/pxp (live)                   | 1 minute (minimum)        |
+| Seasons                                   | 1 week                    |
+| Teams/team details                        | 1 day                     |
+| Standings                                 | 1 hour                    |
+
+<sup>1</sup>: This endpoint (`getSeasonSchedule`) takes a *very* long time uncached (40+ seconds!). You should consider caching results locally if live game details are not top priority for you.
