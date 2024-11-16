@@ -453,6 +453,17 @@ router
     // so we have no choice but to bail out here
     return json({ message: "No such team" }, { status: 404 });
   })
+  // .get("/game_reports/official-game-report.php", async (req) => {
+  //   const { client_code, game_id } = z
+  //     .object({
+  //       client_code: z.string(),
+  //       game_id: z.string(),
+  //       // lang_id: z.string(),
+  //     })
+  //     .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
+
+  //   // https://www.khl.ru/pdf/1217/885951/game-885951-en.pdf
+  // })
   .all("*", () => error(404));
 
 export default {
