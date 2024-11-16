@@ -13,6 +13,7 @@ import { NumericBoolean, PlayerMedia } from "hockeytech";
 import { getchEvent, getchLightPlayer } from "./cache";
 import { State } from "khl-api-types";
 import {
+  getPlayerCurrentSeasonStats,
   getPlayerGameByGame,
   getPlayerProfileBio,
   getPlayerSeasonStats,
@@ -307,6 +308,15 @@ router
                 }
                 case "gamebygame": {
                   const stats = await getPlayerGameByGame(
+                    env,
+                    league,
+                    lang,
+                    playerId,
+                  );
+                  return modulekitResponse(params, key, stats);
+                }
+                case "mostrecentseasonstats": {
+                  const stats = await getPlayerCurrentSeasonStats(
                     env,
                     league,
                     lang,

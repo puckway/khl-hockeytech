@@ -3,6 +3,7 @@ import type {
   GoalieSeasonStatTotal,
   NumericBoolean,
   PlayerBio,
+  PlayerCurrentSeasonStats,
   PlayerGameByGameStats,
   PlayerMedia,
   PlayerSeasonStat,
@@ -312,6 +313,7 @@ export const getPlayerSeasonStats = async (
           break;
         case StatId.TimeOnIce:
           numbers.seconds_played = Math.floor(stat.val * 1000);
+          numbers.minutes_played = stat.val;
           break;
         case StatId.GamesPlayed:
           numbers.games_played = stat.val;
@@ -514,4 +516,127 @@ export const getPlayerSeasonStats = async (
     regular: latestStage.id === regularStage?.id ? stats : undefined,
     playoff: latestStage.id === playoffStage?.id ? stats : undefined,
   };
+};
+
+export const getPlayerCurrentSeasonStats = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  playerId: number,
+): Promise<PlayerCurrentSeasonStats> => {
+  const player = await getchPlayer(env, league, playerId, locale);
+  if (!player) {
+    throw Error("no such person/player found");
+  }
+
+  const allSeasons = await request<RESTGetAPITables>(league, Routes.tables(), {
+    params: { locale },
+  });
+  allSeasons.sort(
+    (a, b) => Number(b.season.split("/")[0]) - Number(a.season.split("/")[0]),
+  );
+  const latestSeason = allSeasons[0];
+  const latestStage = latestSeason.stages[latestSeason.stages.length - 1];
+
+  // biome-ignore format:
+  const numbers: Pick<
+    PlayerCurrentSeasonStats, "assists" | "games_played" | "goals" | "empty_net_goals" | "faceoff_attempts" | "faceoff_pct" | "faceoff_wa" | "faceoff_wins" | "first_goals" | "game_tieing_goals" | "game_winning_goals" | "ice_time" | "ice_time_avg" | "insurance_goals" | "major_penalties" | "minor_penalties" | "overtime_goals" | "penalty_minutes" | "penalty_minutes_per_game" | "plus_minus" | "points" | "points_per_game" | "power_play_assists" | "power_play_goals" | "power_play_points" | "shooting_percentage" | "shootout_attempts" | "shootout_games_played" | "shootout_goals" | "shootout_percentage" | "shootout_winning_goals" | "short_handed_assists" | "short_handed_goals" | "short_handed_points" | "shots" | "shots_on" | "unassisted_goals"
+  > = {
+    assists: "0",
+    games_played: "0",
+    goals: "0",
+    empty_net_goals: "0",
+    faceoff_attempts: "0",
+    faceoff_pct: "0",
+    faceoff_wins: "0",
+    first_goals: "0",
+    game_tieing_goals: "0",
+    game_winning_goals: "0",
+    insurance_goals: "0",
+    overtime_goals: "0",
+    penalty_minutes: "0",
+    penalty_minutes_per_game: "0",
+    plus_minus: "0",
+    points: "0",
+    points_per_game: "0",
+    power_play_assists: "0",
+    power_play_goals: "0",
+    shooting_percentage: "0",
+    shootout_attempts: "0",
+    shootout_goals: "0",
+    shootout_percentage: "0",
+    shootout_winning_goals: "0",
+    short_handed_assists: "0",
+    short_handed_goals: "0",
+    shots: "0",
+    unassisted_goals: "0",
+    faceoff_wa: "0",
+    ice_time: "0",
+    ice_time_avg: "0.0000",
+    major_penalties: "0",
+    minor_penalties: "0",
+    power_play_points: "0",
+    shootout_games_played: "0",
+    short_handed_points: "0",
+    shots_on: "0"
+  };
+  for (const stat of player.stats) {
+    switch (stat.id) {
+      case StatId.Points:
+        numbers.points = String(stat.val);
+        break;
+      case StatId.PenaltyInMinutes:
+        numbers.penalty_minutes = String(stat.val);
+        break;
+      case StatId.TimeOnIce:
+        // assuming this needs to be minutes
+        numbers.ice_time = String(Math.floor(stat.val));
+        break;
+      case StatId.GamesPlayed:
+        numbers.games_played = String(stat.val);
+        break;
+      case StatId.Goals:
+        numbers.goals = String(stat.val);
+        break;
+      case StatId.PlusMinus:
+        numbers.plus_minus = String(stat.val);
+        break;
+      case StatId.PenaltyInMinutesAgainst:
+        numbers.penalty_minutes = String(stat.val);
+        break;
+      case StatId.FaceoffsWon:
+        numbers.faceoff_wins = String(stat.val);
+        break;
+      default:
+        break;
+    }
+  }
+  numbers.points_per_game = String(
+    Math.max(
+      Number(numbers.points) / (Number(numbers.games_played) || 1),
+      0,
+    ).toFixed(2),
+  );
+  numbers.assists = String(
+    Math.max(Number(numbers.points) - Number(numbers.goals), 0),
+  );
+  numbers.ice_time_avg = String(
+    Math.max(
+      Number(numbers.ice_time) / (Number(numbers.games_played) || 1),
+      0,
+    ).toFixed(3),
+  );
+
+  const { first_name, last_name } = getPlayerName(player);
+  return {
+    ...numbers,
+    season_id: String(latestStage.id),
+    season_name: `${latestSeason.season} ${latestStage.title}`,
+    division: player.team.division ?? "",
+    player_id: String(player.id),
+    first_name,
+    last_name,
+    team_id: String(player.team.id),
+    team_name: `${player.team.location} ${player.team.name}`,
+  } satisfies PlayerCurrentSeasonStats;
 };
