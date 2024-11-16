@@ -45,7 +45,7 @@ export const modulekitResponse = <K extends string, T>(
       Copyright: {
         required_copyright:
           "Official statistics provided by Kontinental Hockey League",
-        required_link: "https://www.khl.ru",
+        required_link: getLeagueSite(params.client_code, params.lang ?? "ru"),
         powered_by: "Powered by khl-hockeytech, based on HockeyTech.com",
         powered_by_url: "https://github.com/shayypy/khl-hockeytech",
       },
