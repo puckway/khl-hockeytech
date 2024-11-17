@@ -68,6 +68,8 @@ const scorebar = await client.getScorebar(1, 1);
 
 Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. You may now be asking: how can I construct `khl.ru` URLs for my users?
 
+#### `khl.ru` redirect routes
+
 | Name             | Path                       |
 |------------------|----------------------------|
 | Game Center      | `/:league/game-center/:id` |
@@ -75,6 +77,14 @@ Models in the KHL API have two separate IDs which you can read about [here](http
 | Team<sup>1</sup> | `/:league/team/:id`        |
 
 <sup>1</sup>: You may instead consider shipping a list of teams with your application so that you already know the `khl_id` and name of every team (you can see our list [here](/src/teams.ts)).
+
+#### Media redirect routes
+
+| Name                  | Path                 |
+|-----------------------|----------------------|
+| Team logo<sup>1</sup> | `/:league/logos/:id` |
+
+<sup>1</sup>: If a file extension is needed, `.png` can be used. However there is no guarantee that all images are returned in PNG format - this endpoint just blindly returns the URL provided by the league.
 
 ### Caveats (bad data)
 
@@ -92,7 +102,7 @@ The KHL API can be quite slow, so in order to speed up requests, some common typ
 | Game details/pxp (not live)               | Time until start or 1 day |
 | Game details/pxp (live)                   | 1 minute (minimum)        |
 | Seasons                                   | 1 week                    |
-| Teams/team details                        | 1 day                     |
+| Teams                                     | 1 week                    |
 | Standings                                 | 1 hour                    |
 
 <sup>1</sup>: This endpoint (`getSeasonSchedule`) takes a *very* long time uncached (40+ seconds!). You should consider caching results locally if live game details are not top priority for you.

@@ -11,7 +11,7 @@ import {
   modulekitResponse,
 } from "./modulekit";
 import { NumericBoolean, PlayerMedia } from "hockeytech";
-import { getchEvent, getchLightPlayer } from "./cache";
+import { getchEvent, getchLightPlayer, getchTeams } from "./cache";
 import { State } from "khl-api-types";
 import {
   getPlayerCurrentSeasonStats,
@@ -19,7 +19,7 @@ import {
   getPlayerProfileBio,
   getPlayerSeasonStats,
 } from "./players";
-import { allTeams } from "./teams";
+import { allTeams, getTeam } from "./teams";
 import { getLeagueSite } from "./league";
 import { M3uParser } from "m3u-parser-generator";
 
@@ -489,6 +489,27 @@ router
     // I don't think there is a way to get the slug from any API endpoint,
     // so we have no choice but to bail out here
     return json({ message: "No such team" }, { status: 404 });
+  })
+  .get("/:league/logos/:id.:extension?", async (req, env) => {
+    const { league, id } = z
+      .object({
+        league: zClientCode,
+        id: zIntAsString,
+        extension: z.literal("png").optional(),
+      })
+      .parse(req.params);
+    const { lang } = z
+      .object({ lang: zLang })
+      .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
+
+    const localTeam = getTeam(league, id);
+    if (!localTeam) return json({ message: "No such team" }, { status: 404 });
+
+    const teams = await getchTeams(env, league, lang);
+    const team = teams.find((t) => t.id === id);
+    if (!team) return json({ message: "No such team" }, { status: 404 });
+
+    return redirect(team.image);
   })
   // .get("/game_reports/official-game-report.php", async (req) => {
   //   const { client_code, game_id } = z
