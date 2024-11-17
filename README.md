@@ -1,6 +1,6 @@
 # khl-hockeytech
 
-This is a proxy worker for the KHL (and its subleagues; WHL and MHL) that enables compatibility with HockeyTech consumers.
+This is a drop-in proxy for the KHL, WHL, and MHL that enables compatibility with HockeyTech API consumers. [See usage instructions](#nitty-gritty--usage).
 
 ## Coverage (as represented by jonathas/hockeytech functions)
 

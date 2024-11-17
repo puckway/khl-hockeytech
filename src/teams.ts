@@ -175,15 +175,15 @@ export const allTeams: Record<
       abbreviations: { en: "SCH", ru: "СОЧ" },
     },
   ],
-  // The abbreviations here & for the WHL are completely arbitrary since I
-  // couldn't find any place on the websites where they were used
+  // TODO: Most of the abbreviations here & for the WHL are completely
+  // arbitrary since I didn't realize they were used in the livestreams
   mhl: [
     {
       id: 375,
       khl_id: 230,
       names: { en: "Omskie Yastreby", ru: "Омские Ястребы" },
       locations: { en: "Omsk", ru: "Омск" },
-      abbreviations: { en: "OMS", ru: "ОМС" },
+      abbreviations: { en: "OYA", ru: "ОЯ" },
     },
     {
       id: 455,
@@ -313,7 +313,7 @@ export const allTeams: Record<
       khl_id: 231,
       names: { en: "Reaktor", ru: "Реактор" },
       locations: { en: "Nizhnekamsk", ru: "Нижнекамск" },
-      abbreviations: { en: "REA", ru: "РЭА" },
+      abbreviations: { en: "RKT", ru: "РКТ" },
     },
     {
       id: 447,
@@ -328,7 +328,7 @@ export const allTeams: Record<
       khl_id: 219,
       names: { en: "Russkie Vityazi", ru: "Русские Витязи" },
       locations: { en: "Chekhov", ru: "Московская область" },
-      abbreviations: { en: "VIT", ru: "ВИТ" },
+      abbreviations: { en: "RVT", ru: "РВТ" },
     },
     {
       id: 673,
@@ -342,7 +342,7 @@ export const allTeams: Record<
       khl_id: 321,
       names: { en: "Snezhnye Barsy", ru: "Снежные Барсы" },
       locations: { en: "Astana", ru: "Астана" },
-      abbreviations: { en: "SZN", ru: "СЗН" },
+      abbreviations: { en: "SNB", ru: "СНБ" },
     },
     {
       id: 411,
@@ -377,7 +377,7 @@ export const allTeams: Record<
       khl_id: 218,
       names: { en: "Atlant", ru: "СМО Атлант" },
       locations: { en: "Moscow Region", ru: "Московская область" },
-      abbreviations: { en: "ATL", ru: "АТЛ" },
+      abbreviations: { en: "AMY", ru: "ЭМИ" },
     },
     {
       id: 633,
