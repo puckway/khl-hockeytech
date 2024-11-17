@@ -76,15 +76,18 @@ Models in the KHL API have two separate IDs which you can read about [here](http
 | Player           | `/:league/player/:id`      |
 | Team<sup>1</sup> | `/:league/team/:id`        |
 
-<sup>1</sup>: You may instead consider shipping a list of teams with your application so that you already know the `khl_id` and name of every team (you can see our list [here](/src/teams.ts)).
+- <sup>1</sup>: You may instead consider shipping a list of teams with your application so that you already know the `khl_id` and name of every team (you can see our list [here](/src/teams.ts)).
 
 #### Media redirect routes
 
-| Name                  | Path                 |
-|-----------------------|----------------------|
-| Team logo<sup>1</sup> | `/:league/logos/:id` |
+| Name                        | Path                          |
+|-----------------------------|-------------------------------|
+| Team logo<sup>2</sup>       | `/assets/:league/logos/:id`   |
+| Player headshot<sup>3</sup> | `/assets/:league/players/:id` |
 
-<sup>1</sup>: If a file extension is needed, `.png` can be used. However there is no guarantee that all images are returned in PNG format - this endpoint just blindly returns the URL provided by the league.
+- <sup>1</sup>: There is no guarantee that all images are returned in the requested format - these endpoints just blindly return the URL provided by the league.
+- <sup>2</sup>: If a file extension is needed, `.png`<sup>1</sup> can be used.
+- <sup>3</sup>: If a file extension is needed, `.jpg`/`.jpeg`<sup>1</sup> can be used.
 
 ### Caveats (bad data)
 

@@ -1,4 +1,4 @@
-import { IRequest, Router, error, json } from "itty-router";
+import { IRequest, Router, error, jpeg, json } from "itty-router";
 import { z } from "zod";
 import {
   getDailySchedule,
@@ -21,7 +21,8 @@ import {
 } from "./players";
 import { allTeams, getTeam } from "./teams";
 import { getLeagueSite } from "./league";
-import { M3uParser } from "m3u-parser-generator";
+import empty_avatar from "./public/empty_avatar";
+import { base64ToArrayBuffer } from "./public";
 
 export interface Env {
   KV: KVNamespace;
@@ -492,7 +493,7 @@ router
     // so we have no choice but to bail out here
     return json({ message: "No such team" }, { status: 404 });
   })
-  .get("/:league/logos/:id.:extension?", async (req, env) => {
+  .get("/assets/:league/logos/:id.:extension?", async (req, env) => {
     const { league, id } = z
       .object({
         league: zClientCode,
@@ -500,18 +501,34 @@ router
         extension: z.literal("png").optional(),
       })
       .parse(req.params);
-    const { lang } = z
-      .object({ lang: zLang })
-      .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
 
     const localTeam = getTeam(league, id);
     if (!localTeam) return json({ message: "No such team" }, { status: 404 });
 
-    const teams = await getchTeams(env, league, lang);
+    const teams = await getchTeams(env, league);
     const team = teams.find((t) => t.id === id);
     if (!team) return json({ message: "No such team" }, { status: 404 });
 
     return redirect(team.image);
+  })
+  .get("/assets/:league/players/:id.:extension?", async (req, env) => {
+    const { league, id } = z
+      .object({
+        league: zClientCode,
+        id: zIntAsString,
+        extension: z.enum(["jpg", "jpeg"]).optional(),
+      })
+      .parse(req.params);
+
+    const player = await getchLightPlayer(env, league, id);
+    if (!player) return json({ message: "No such player" }, { status: 404 });
+
+    // These are reliably https://www.khl.ru/img/teamplayers_db/{???}/{khl_id}.jpg
+    // I don't know what the first parameter is, but we
+    // need to fetch the player for their khl_id anyway.
+    return player.image
+      ? redirect(player.image)
+      : jpeg(base64ToArrayBuffer(empty_avatar));
   })
   // .get("/game_reports/official-game-report.php", async (req) => {
   //   const { client_code, game_id } = z
