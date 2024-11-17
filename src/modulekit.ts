@@ -226,6 +226,7 @@ export const getDailySchedule = async (
     const d = new Date(event.event_start_at);
     const home = getTeam(league, event.team_a.id);
     const away = getTeam(league, event.team_b.id);
+    const statuses = getEventStatuses(event);
     return {
       date_played: d.toISOString().split("T")[0],
       date_played_fmt: d.toLocaleDateString(locale, {
@@ -291,7 +292,7 @@ export const getDailySchedule = async (
       //     event.stage_name?.includes("Плей-офф")) ??
       //     false,
       // ),
-      schedule_time: new Date(event.start_at).toLocaleTimeString(locale),
+      schedule_time: statuses.ScheduledTime,
       season_id: String(event.stage_id),
       shootout:
         event.period && event.period !== -1 ? numBool(event.period > 4) : "0",
