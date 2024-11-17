@@ -9,13 +9,28 @@ import type {
   PlayerSeasonStat,
   PlayerSeasonStatTotal,
   PlayerStatsBySeason,
+  SearchPlayersResult,
   SkaterSeasonStat,
   SkaterSeasonStatTotal,
 } from "hockeytech";
 import { Env, Lang, League, numBool } from ".";
-import { APIPlayer, Role, Routes, StageType, StatId } from "khl-api-types";
+import {
+  APIPlayer,
+  RESTGetAPIPlayers,
+  RESTGetAPIPlayersLight,
+  Role,
+  Routes,
+  StageType,
+  StatId,
+  Stick,
+} from "khl-api-types";
 import { allTeams, getTeam } from "./teams";
-import { emptyKeys, RESTGetAPITables } from "./modulekit";
+import {
+  emptyKeys,
+  RESTGetAPITables,
+  roleKeyToPosition,
+  roleKeyToPositionId,
+} from "./modulekit";
 import { getchPlayer } from "./cache";
 import { request } from "./rest";
 
@@ -246,34 +261,9 @@ export const getPlayerSeasonStats = async (
   const stats: Array<PlayerSeasonStat | PlayerSeasonStatTotal> = [];
 
   if (player.role_key === Role.Goaltender) {
+    // biome-ignore format:
     const numbers: Pick<
-      GoalieSeasonStatTotal,
-      | "assists"
-      | "gaa"
-      | "games_played"
-      | "goals"
-      | "goals_against"
-      | "goals_against_average"
-      | "losses"
-      | "minutes_played"
-      | "ot"
-      | "ot_losses"
-      | "penalty_minutes"
-      | "points"
-      | "savepct"
-      | "saves"
-      | "seconds_played"
-      | "shootout_goals_against"
-      | "shootout_losses"
-      | "shootout_saves"
-      | "shootout_shots"
-      | "shots_against"
-      | "shotspct"
-      | "shutouts"
-      | "sosavepct"
-      | "ties"
-      | "total_losses"
-      | "wins"
+      GoalieSeasonStatTotal, "assists" | "gaa" | "games_played" | "goals" | "goals_against" | "goals_against_average" | "losses" | "minutes_played" | "ot" | "ot_losses" | "penalty_minutes" | "points" | "savepct" | "saves" | "seconds_played" | "shootout_goals_against" | "shootout_losses" | "shootout_saves" | "shootout_shots" | "shots_against" | "shotspct" | "shutouts" | "sosavepct" | "ties" | "total_losses" | "wins"
     > = {
       assists: 0,
       gaa: "0.00",
@@ -384,38 +374,9 @@ export const getPlayerSeasonStats = async (
       } satisfies GoalieSeasonStatTotal,
     );
   } else {
+    // biome-ignore format:
     const numbers: Pick<
-      SkaterSeasonStatTotal,
-      | "assists"
-      | "empty_net_goals"
-      | "faceoff_attempts"
-      | "faceoff_pct"
-      | "faceoff_wins"
-      | "first_goals"
-      | "game_tieing_goals"
-      | "game_winning_goals"
-      | "games_played"
-      | "goals"
-      | "hits"
-      | "insurance_goals"
-      | "overtime_goals"
-      | "penalty_minutes"
-      | "penalty_minutes_per_game"
-      | "plus_minus"
-      | "points"
-      | "points_per_game"
-      | "power_play_assists"
-      | "power_play_goals"
-      | "shooting_percentage"
-      | "shootout_attempts"
-      | "shootout_goals"
-      | "shootout_percentage"
-      | "shootout_winning_goals"
-      | "short_handed_assists"
-      | "short_handed_goals"
-      | "shots"
-      | "unassisted_goals"
-      | "jersey_number"
+      SkaterSeasonStatTotal, "assists" | "empty_net_goals" | "faceoff_attempts" | "faceoff_pct" | "faceoff_wins" | "first_goals" | "game_tieing_goals" | "game_winning_goals" | "games_played" | "goals" | "hits" | "insurance_goals" | "overtime_goals" | "penalty_minutes" | "penalty_minutes_per_game" | "plus_minus" | "points" | "points_per_game" | "power_play_assists" | "power_play_goals" | "shooting_percentage" | "shootout_attempts" | "shootout_goals" | "shootout_percentage" | "shootout_winning_goals" | "short_handed_assists" | "short_handed_goals" | "shots" | "unassisted_goals" | "jersey_number"
     > = {
       assists: 0,
       games_played: 0,
@@ -639,4 +600,82 @@ export const getPlayerCurrentSeasonStats = async (
     team_id: String(player.team.id),
     team_name: `${player.team.location} ${player.team.name}`,
   } satisfies PlayerCurrentSeasonStats;
+};
+
+export const searchPlayers = async (
+  env: Env,
+  league: League,
+  locale: Lang,
+  query: string,
+): Promise<SearchPlayersResult[]> => {
+  const lightPlayers = await request<RESTGetAPIPlayersLight>(
+    league,
+    Routes.playersLight(),
+    { params: { locale: locale ?? "en" } },
+  );
+
+  const q = query.toLowerCase();
+  const found = lightPlayers
+    .filter((player) => {
+      const { first_name, last_name, name } = getPlayerName(player);
+      return (
+        name.toLowerCase().includes(q) ||
+        first_name.toLowerCase().startsWith(q) ||
+        last_name.toLowerCase().startsWith(q)
+      );
+    })
+    // The players endpoint only returns 16 players so there's
+    // no point in requesting more
+    .slice(0, 16);
+  if (found.length === 0) return [];
+
+  const params = new URLSearchParams({ locale: locale ?? "en" });
+  for (const player of found) params.append("q[id_in][]", String(player.id));
+  const players = await request<RESTGetAPIPlayers>(league, Routes.players(), {
+    params,
+  });
+
+  // biome-ignore format:
+  const empty = emptyKeys("birthtown", "birthprov", "profile_image")
+  const data = players.map(({ player }) => {
+    const { name: _, rookie: __, ...converted } = doPlayerConversions(player);
+    const lastActive =
+      player.quotes.length === 0 ? null : new Date(player.quotes[0].start_ts);
+
+    const team = player.team ?? player.teams[0];
+    return {
+      person_id: String(player.id),
+      player_id: String(player.id),
+      ...empty,
+      ...converted,
+      rawbirthdate: converted.birthdate,
+      active: "1",
+      phonetic_name: "", // Could be cool to include this
+      shoots: player.stick ? player.stick.toUpperCase() : "",
+      catches: player.stick ? (player.stick === Stick.Left ? "R" : "L") : "",
+      jersey_number: String(player.shirt_number ?? ""),
+      birthcntry: player.country,
+      team_id: String(team?.id ?? ""),
+      role_id: roleKeyToPositionId(player.role_key),
+      // player.quotes is sorted most recent first (thank you)
+      season_id: player.quotes[0]?.stage_id.toString() ?? "",
+      role_name: "Player",
+      all_roles: "Player",
+      last_team_name: team?.name ?? "",
+      last_team_code: team
+        ? getTeam(league, team.id)?.abbreviations[locale] ?? ""
+        : "",
+      division: team?.division ?? "",
+      position: roleKeyToPosition(player.role_key),
+      score: "0.0", // I don't know what this is
+      last_active_date:
+        lastActive === null
+          ? ""
+          : `${lastActive.getUTCFullYear()}-${
+              lastActive.getUTCMonth() + 1
+            }-${lastActive.getUTCDate()}`,
+    } satisfies SearchPlayersResult;
+  });
+
+  return data;
 };

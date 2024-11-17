@@ -3,10 +3,12 @@ import { Lang } from ".";
 
 export interface JsonFetchOptions {
   method?: "GET";
-  params?: { locale?: Lang; stage_id?: number } & Record<
-    string,
-    string | number | boolean | undefined
-  >;
+  params?:
+    | URLSearchParams
+    | ({ locale?: Lang; stage_id?: number } & Record<
+        string,
+        string | number | boolean | undefined
+      >);
 }
 
 export class KhlApiError extends Error {}
@@ -19,9 +21,13 @@ export const request = async <T>(
   const method = options?.method ?? "GET";
   const url = new URL(APIRouteBases[baseKey] + path);
   if (options?.params) {
-    for (const [key, val] of Object.entries(options.params)) {
-      if (val !== undefined) {
-        url.searchParams.set(key, String(val));
+    if (options.params instanceof URLSearchParams) {
+      url.search = options.params.toString();
+    } else {
+      for (const [key, val] of Object.entries(options.params)) {
+        if (val !== undefined) {
+          url.searchParams.set(key, String(val));
+        }
       }
     }
   }

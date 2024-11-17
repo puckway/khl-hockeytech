@@ -18,6 +18,7 @@ import {
   getPlayerGameByGame,
   getPlayerProfileBio,
   getPlayerSeasonStats,
+  searchPlayers,
 } from "./players";
 import { allTeams, getTeam } from "./teams";
 import { getLeagueSite } from "./league";
@@ -369,6 +370,15 @@ router
                 params.team_id,
               );
               return modulekitResponse(params, key, schedule);
+            }
+            case "searchplayers": {
+              const results = await searchPlayers(
+                env,
+                league,
+                lang,
+                params.search_term,
+              );
+              return modulekitResponse(params, key, results);
             }
             default:
               break;
