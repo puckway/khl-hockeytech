@@ -48,7 +48,9 @@ const zLang = z
   .default("en")
   .transform((v) => (!["en", "ru"].includes(v) ? "en" : v))
   .refine((v): v is Lang => true);
-const zClientCode = z.enum(["khl", "mhl", "whl"]);
+const zClientCode = z
+  .enum(["khl", "mhl", "whl", "zhhl"])
+  .transform((code) => (code === "zhhl" ? "whl" : code));
 const zDateAsString = z
   .string()
   .refine((v) => !Number.isNaN(new Date(v)))

@@ -38,7 +38,7 @@ This is a drop-in proxy for the KHL, WHL, and MHL that enables compatibility wit
 
 ### Identifiers
 
-Use `khl`, `mhl`, or `whl` as both your client code and key, depending on which league you would like to query.
+Use `khl`, `mhl`, or `whl` as both your client code and key, depending on which league you would like to query. In case you find the client code `whl` to conflict in your application with the Western Hockey League, you can also use `zhhl` as an alias - `whl` will be returned in responses.
 
 ### Locale
 
