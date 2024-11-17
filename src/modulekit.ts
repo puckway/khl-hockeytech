@@ -246,7 +246,7 @@ export const getDailySchedule = async (
       game_id: String(event.id),
       // This is something that the KHL provides but I'm not sure where at the moment
       game_number: "0",
-      game_status: stateToStatus(event.game_state_key),
+      game_status: statuses.GameStatusStringLong,
       goal_list: [],
       goal_summary: [],
       home_goal_count: event.score.split(":")[0],
