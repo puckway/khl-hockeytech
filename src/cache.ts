@@ -14,15 +14,14 @@ import { request } from "./rest";
 export const getchEvent = async (
   env: Env,
   league: League,
-  seasonId: number,
   id: number,
   locale?: Lang,
 ) => {
-  const key = `${locale ?? "en"}-event-${league}-event-${seasonId}-${id}`;
+  const key = `${locale ?? "en"}-event-${league}-event-${id}`;
   let event = await env.KV.get<APIEventWithInfo>(key, "json");
   if (!event) {
     const data = await request<RESTGetAPIEvent>(league, Routes.event(), {
-      params: { locale: locale ?? "en", stage_id: seasonId, id },
+      params: { locale: locale ?? "en", id },
     });
     event = data.event;
     const now = new Date();

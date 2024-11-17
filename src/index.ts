@@ -432,11 +432,10 @@ router
   //   //   },
   //   // });
   // })
-  .get("/game-center/:league/:seasonId/:id", async (req, env) => {
-    const { league, seasonId, id } = z
+  .get("/:league/game-center/:id", async (req, env) => {
+    const { league, id } = z
       .object({
         league: zClientCode,
-        seasonId: zIntAsString,
         id: zIntAsString,
       })
       .parse(req.params);
@@ -444,14 +443,14 @@ router
       .object({ lang: zLang })
       .parse(Object.fromEntries(new URL(req.url).searchParams.entries()));
 
-    const event = await getchEvent(env, league, seasonId, id);
+    const event = await getchEvent(env, league, id);
     return redirect(
       `${getLeagueSite(league, lang)}/game/${event.outer_stage_id}/${
         event.khl_id
       }/${event.game_state_key === State.Finished ? "resume" : "preview"}/`,
     );
   })
-  .get("/player/:league/:id", async (req, env) => {
+  .get("/:league/player/:id", async (req, env) => {
     const { league, id } = z
       .object({
         league: zClientCode,
@@ -468,7 +467,7 @@ router
     }
     return redirect(`${getLeagueSite(league, lang)}/players/${player.khl_id}`);
   })
-  .get("/team/:league/:id", async (req) => {
+  .get("/:league/team/:id", async (req) => {
     const { league, id } = z
       .object({
         league: zClientCode,

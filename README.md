@@ -68,11 +68,11 @@ const scorebar = await client.getScorebar(1, 1);
 
 Models in the KHL API have two separate IDs which you can read about [here](https://github.com/shayypy/khl-api/blob/main/mobile-api.md#ids). For the purpose of using data *from* this API *with* this API, any given `id` property (`player.id`, `team.id`, etc) will be populated with the `id` of the native object, and *not* its `khl_id`. You may now be asking: how can I construct `khl.ru` URLs for my users?
 
-| Name             | Path                                  |
-|------------------|---------------------------------------|
-| Game Center      | `/game-center/:league/:season_id/:id` |
-| Player           | `/player/:league/:id`                 |
-| Team<sup>1</sup> | `/team/:league/:id`                   |
+| Name             | Path                       |
+|------------------|----------------------------|
+| Game Center      | `/:league/game-center/:id` |
+| Player           | `/:league/player/:id`      |
+| Team<sup>1</sup> | `/:league/team/:id`        |
 
 <sup>1</sup>: You may instead consider shipping a list of teams with your application so that you already know the `khl_id` and name of every team (you can see our list [here](/src/teams.ts)).
 
