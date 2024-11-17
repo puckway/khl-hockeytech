@@ -206,10 +206,16 @@ export const getDailySchedule = async (
   locale: Lang,
   date: Date,
 ): Promise<GamesByDate[]> => {
+  const lastSecond = new Date(date);
+  lastSecond.setUTCHours(23, 59, 59, 0);
+
   const games = await request<RESTGetAPIEvents>(league, Routes.events(), {
     params: {
       locale,
-      "q[start_at_lt_time_from_unixtime]": Math.ceil(date.getTime() / 1000),
+      "q[start_at_lt_time_from_unixtime]": Math.ceil(
+        lastSecond.getTime() / 1000,
+      ),
+      "q[start_at_gt_time_from_unixtime]": Math.ceil(date.getTime() / 1000),
       order_direction: "desc",
     },
   });
@@ -295,7 +301,7 @@ export const getDailySchedule = async (
         minute: "2-digit",
       }),
       started: numBool(event.game_state_key === State.InProgress),
-      status: stateToStatus(event.game_state_key),
+      status: statuses.GameStatus,
       timezone: "Europe/Moscow",
       venue_location: event.location ?? "",
       visiting_goal_count: event.score.split(":")[1],
