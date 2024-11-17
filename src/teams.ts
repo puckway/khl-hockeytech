@@ -460,7 +460,7 @@ export const allTeams: Record<
   whl: [
     {
       id: 601,
-      khl_id: 0,
+      khl_id: 530,
       names: { en: "Agidel", ru: "Агидель" },
       locations: { en: "Ufa", ru: "Уфа" },
       abbreviations: { en: "AGD", ru: "АГД" },
