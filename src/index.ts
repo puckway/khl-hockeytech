@@ -160,9 +160,36 @@ export const zHockeyTechParams = z.intersection(
                 view: z.literal("statviewtype"),
                 season_id: zIntAsString,
                 stat: z.string(),
-                type: z.string(),
+                type: z.enum([
+                  "standings",
+                  "topscorers",
+                  "topgoalies",
+                  "skaters",
+                  "goalies",
+                  "streaks",
+                  "transactions",
+                ]),
+                first: zIntAsString.optional(),
+                limit: zIntAsString.optional(),
+                sort: z.string().optional(),
+                order_direction: z.string().optional(),
+                qualified: z.enum(["all", "qualified"]).optional(),
               }),
-              // L229
+              z.object({
+                view: z.literal("combinedplayers"),
+                season_id: zIntAsString,
+                return_amount: zIntAsString,
+                qualified: z.enum(["all", "qualified"]),
+                type: z.enum(["skaters", "goalies"]),
+              }),
+              z.object({
+                view: z.literal("brackets"),
+                season_id: zIntAsString,
+              }),
+              z.object({
+                view: z.literal("searchplayers"),
+                search_term: z.string(),
+              }),
             ])
             .superRefine((data, ctx) => {
               if (data.view === "player") {
