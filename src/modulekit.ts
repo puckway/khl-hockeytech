@@ -2,6 +2,7 @@ import {
   APIEvent,
   APIMinimalEvent,
   APITeamWithDivision,
+  RESTGetAPICommonData,
   RESTGetAPIEvents,
   RESTGetAPIPlayers,
   RESTGetAPITeam,
@@ -789,41 +790,40 @@ export const getSeasonList = async (
   league: League,
   locale: Lang,
 ): Promise<Season[]> => {
-  const seasons = await request<RESTGetAPITables>(league, Routes.tables(), {
+  const data = await request<RESTGetAPICommonData>(league, Routes.data(), {
     params: { locale },
   });
-  const stages: Season[] = [];
-  for (const season of seasons) {
-    const [startYear, endYear] = season.season.split("/").map(Number);
-    for (const stage of season.stages) {
-      stages.push({
-        season_id: String(stage.id),
-        season_name: stage.title,
-        shortname: season.season,
-        playoff: numBool(stage.type === StageType.Playoff),
-        career: "1",
-        // This data isn't provided by the KHL so we just manufacture plausible
-        // container dates that can be used to vaguely sort stages chronologically
-        // ---
-        // A regular stage runs through Jul 1 - Feb 24. A playoff stage goes from
-        // Feb 25 - Jun 30. This is intentionally imprecise, and covers the entire
-        // calendar year.
-        start_date: (stage.type === StageType.Playoff
-          ? new Date(endYear, 1, 25)
-          : new Date(startYear, 6, 1)
-        )
-          .toISOString()
-          .split("T")[0],
-        end_date: (stage.type === StageType.Playoff
-          ? new Date(endYear, 5, 30)
-          : new Date(endYear, 1, 24)
-        )
-          .toISOString()
-          .split("T")[0],
-      });
-    }
+  const stages = data.stages_v2;
+  const seasons: Season[] = [];
+  for (const stage of stages) {
+    const [startYear, endYear] = stage.season.split("/").map(Number);
+    seasons.push({
+      season_id: String(stage.id),
+      season_name: `${stage.season} ${stage.title}`,
+      shortname: stage.season,
+      playoff: numBool(stage.type === StageType.Playoff),
+      career: "1",
+      // This data isn't provided by the KHL so we just manufacture plausible
+      // container dates that can be used to vaguely sort stages chronologically
+      // ---
+      // A regular stage runs through Jul 1 - Feb 24. A playoff stage goes from
+      // Feb 25 - Jun 30. This is intentionally imprecise, and covers the entire
+      // calendar year.
+      start_date: (stage.type === StageType.Playoff
+        ? new Date(endYear, 1, 25)
+        : new Date(startYear, 6, 1)
+      )
+        .toISOString()
+        .split("T")[0],
+      end_date: (stage.type === StageType.Playoff
+        ? new Date(endYear, 5, 30)
+        : new Date(endYear, 1, 24)
+      )
+        .toISOString()
+        .split("T")[0],
+    });
   }
-  return stages;
+  return seasons;
 };
 
 export const getTeamsBySeason = async (

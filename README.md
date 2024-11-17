@@ -42,7 +42,7 @@ Use `khl`, `mhl`, or `whl` as both your client code and key, depending on which 
 
 ### Locale
 
-This service supports `en` and `ru` locales. If an unsupported locale is specified, `en` will be used instead. Be aware that some values are only available in the `ru` locale (like season titles and quotes).
+This service supports `en` and `ru` locales. If an unsupported locale is specified, `en` will be used instead. Be aware that some values are only available in the `ru` locale.
 
 The `Copyright.required_link` value in each response adapts to your provided client code and locale. For example, for a request to `khl` with the `ru` locale, you will see `https://www.khl.ru` here, but a request to `mhl` with the `en` locale will result in `https://engmhl.khl.ru` instead. You can use this value to construct static URLs that do not require custom IDs (see [IDs](#ids--user-facing-urls)). Unfortunately the WHL website is not available in non-Russian locales.
 
