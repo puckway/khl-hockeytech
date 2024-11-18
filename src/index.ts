@@ -478,7 +478,7 @@ router
     if (!player) {
       return json({ message: "No such player" }, { status: 404 });
     }
-    return redirect(`${getLeagueSite(league, lang)}/players/${player.khl_id}`);
+    return redirect(`${getLeagueSite(league, lang)}/players/${player.khl_id}/`);
   })
   .get("/:league/team/:id", async (req) => {
     const { league, id } = z
