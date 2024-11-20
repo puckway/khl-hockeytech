@@ -1,6 +1,7 @@
 import {
   APIEvent,
   APIMinimalEvent,
+  APIPlayer,
   APITeamWithDivision,
   RESTGetAPICommonData,
   RESTGetAPIEvents,
@@ -222,7 +223,7 @@ export const getDailySchedule = async (
   });
   const now = new Date();
   // biome-ignore format:
-  const empty = emptyKeys("attendance", "capacity", "featured_player_id", "game_letter", "visiting_team_notes", "visiting_video_url", "visiting_video_url_fr", "visiting_webcast_url", "visiting_webcast_url_fr", "home_assistant_coach1", "home_assistant_coach2", "home_audio_url", "home_audio_url_fr", "home_coach", "home_manager", "home_team_notes", "home_video_url", "home_video_url_fr", "home_webcast_url", "home_webcast_url_fr", "imported_id", "intermission", "league_game_notes", "mvp1", "mvp2", "mvp3", "private_notes", "public_notes", "quick_score", "schedule_notes", "schedule_notes_fr", "tickets_url", "tickets_url_fr", "type_id", "venue", "visiting_assistant_coach1", "visiting_assistant_coach2", "visiting_audio_url", "visiting_audio_url_fr", "visiting_coach", "visiting_manager")
+  const empty = emptyKeys("attendance", "capacity", "featured_player_id", "game_letter", "visiting_team_notes", "visiting_video_url", "visiting_video_url_fr", "visiting_webcast_url", "visiting_webcast_url_fr", "home_assistant_coach1", "home_assistant_coach2", "home_audio_url", "home_audio_url_fr", "home_coach", "home_manager", "home_team_notes", "home_video_url", "home_video_url_fr", "home_webcast_url", "home_webcast_url_fr", "imported_id", "intermission", "league_game_notes", "mvp1", "mvp2", "mvp3", "private_notes", "public_notes", "quick_score", "schedule_notes", "schedule_notes_fr", "tickets_url_fr", "type_id", "venue", "visiting_assistant_coach1", "visiting_assistant_coach2", "visiting_audio_url", "visiting_audio_url_fr", "visiting_coach", "visiting_manager")
   return games.map(({ event }) => {
     const d = new Date(event.event_start_at);
     const home = getTeam(league, event.team_a.id);
@@ -335,6 +336,7 @@ export const getDailySchedule = async (
       },
       visiting_team_name: event.team_b.name,
       visiting_team_nickname: away?.names[locale] ?? event.team_b.name,
+      tickets_url: getEventTicketsUrl(league, locale, event) ?? "",
       ...empty,
     };
   });
@@ -405,6 +407,18 @@ export const getGamesPerDay = async (
       };
     });
 };
+
+export const getEventTicketsUrl = (
+  league: League,
+  locale: Lang,
+  event: APIEvent,
+) =>
+  // It seems that the other 2 leagues don't have online ticket sales
+  league === "khl"
+    ? `${getLeagueSite(league, locale)}/tickets/${
+        new Date(event.start_at).getUTCMonth() + 1
+      }/${event.team_a.khl_id}/`
+    : undefined;
 
 // It would be cool to use the actual khl.ru scorebar here but I
 // don't think there is a proper API for it, and would require
@@ -597,13 +611,7 @@ export const getScorebar = async (
       VisitorRegulationLosses: String(records.away.regulationLosses),
       VisitorShootoutLosses: String(records.away.shootoutLosses),
       VisitorWins: String(records.away.wins),
-      TicketUrl:
-        // It seems like the other leagues don't have online ticket sales
-        league === "khl"
-          ? `${getLeagueSite(league, locale)}/tickets/${d.getUTCMonth() + 1}/${
-              event.team_a.khl_id
-            }/`
-          : "",
+      TicketUrl: getEventTicketsUrl(league, locale, event) ?? "",
       Intermission: "0",
       venue_location: "",
       venue_name: "",
@@ -626,25 +634,35 @@ export const getTeamRoster = async (
   seasonId: number,
   teamId: number,
 ): Promise<RosterPlayer[]> => {
-  const data = await request<RESTGetAPIPlayers>(league, Routes.players(), {
-    params: {
-      locale,
-      stage_id: seasonId,
-    },
-  });
   const { team } = await request<RESTGetAPITeam>(league, Routes.team(), {
-    params: {
-      locale,
-      stage_id: seasonId,
-      id: teamId,
-    },
+    params: { locale, stage_id: seasonId, id: teamId },
   });
+
+  let loops = 1;
+  const dplayers: APIPlayer[] = [];
+  const playerIds = team.players.map((p) => p.id);
+  // don't do this more than 3 times (48 players)
+  while (playerIds.length !== 0 && loops <= 3) {
+    const params = new URLSearchParams({
+      locale,
+      stage_id: String(seasonId),
+      page: "1",
+    });
+    for (const id of playerIds.slice(0, 16)) {
+      params.append("q[id_in][]", String(id));
+    }
+    const data = await request<RESTGetAPIPlayers>(league, Routes.players(), {
+      params,
+    });
+    dplayers.push(...data.map(({ player }) => player));
+    loops += 1;
+  }
 
   return team.players.map((player) => {
     // biome-ignore format:
     const empty = emptyKeys("phonetic_name", "display_name", "hometown", "homeprov", "homeplace", "birthtown", "birthprov", "birthplace", "birthcntry", "height_hyphenated", "veteran_description", "nhlteam", "draft_status");
 
-    const dplayer = data.find(({ player: p }) => p.id === player.id)?.player;
+    const dplayer = dplayers.find((p) => p.id === player.id);
     const converted = doPlayerConversions({ ...player, ...dplayer });
     return {
       ...empty,
