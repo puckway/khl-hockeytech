@@ -31,7 +31,7 @@ export const getchEvent = async (
       event.game_state_key === State.Soon
         ? Math.min(Math.max((event.start_at - now.getTime()) / 1000, 60), 3600)
         : event.game_state_key === State.InProgress
-          ? 300
+          ? 120
           : 86400;
     await env.KV.put(key, JSON.stringify(event), { expirationTtl: ttl });
   }
