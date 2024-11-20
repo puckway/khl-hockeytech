@@ -231,6 +231,11 @@ const router = Router<IRequest, [Env, ExecutionContext]>();
 
 router
   .get("/", async (request, env) => {
+    const { searchParams } = new URL(request.url);
+    if (!searchParams.has("url")) {
+      return redirect("https://github.com/puckway/khl-hockeytech");
+    }
+
     const url = z
       .string()
       .refine((v) =>
@@ -239,7 +244,7 @@ router
         ),
       )
       .transform((v) => new URL(v))
-      .parse(new URL(request.url).searchParams.get("url"));
+      .parse(searchParams.get("url"));
 
     const params = zHockeyTechParams.parse(
       Object.fromEntries(url.searchParams.entries()),
