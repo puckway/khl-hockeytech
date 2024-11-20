@@ -2,6 +2,7 @@ import {
   APIEvent,
   APIMinimalEvent,
   APIPlayer,
+  APIStage,
   APITeamWithDivision,
   RESTGetAPICommonData,
   RESTGetAPIEvents,
@@ -808,10 +809,18 @@ export const getSeasonList = async (
   league: League,
   locale: Lang,
 ): Promise<Season[]> => {
-  const data = await request<RESTGetAPICommonData>(league, Routes.data(), {
-    params: { locale },
-  });
-  const stages = data.stages_v2;
+  // This endpoint is usually quite fast but I was getting quite a few
+  // timeouts in production so we're going to cache some more.
+  const key = `${locale ?? "en"}-stages-${league}`;
+  let stages = await env.KV.get<APIStage[]>(key, "json");
+  if (!stages) {
+    const data = await request<RESTGetAPICommonData>(league, Routes.data(), {
+      params: { locale },
+    });
+    stages = data.stages_v2;
+    await env.KV.put(key, JSON.stringify(stages), { expirationTtl: 86400 * 7 });
+  }
+
   const seasons: Season[] = [];
   for (const stage of stages) {
     const [startYear, endYear] = stage.season.split("/").map(Number);
