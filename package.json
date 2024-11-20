@@ -9,8 +9,7 @@
   "license": "MIT",
   "scripts": {
     "deploy": "wrangler deploy",
-    "dev": "wrangler dev",
-    "start": "wrangler dev"
+    "dev": "wrangler dev --test-scheduled"
   },
   "devDependencies": {
     "@biomejs/biome": "1.5.3",

@@ -12,7 +12,7 @@ import {
 } from "./modulekit";
 import { NumericBoolean, PlayerMedia } from "hockeytech";
 import { getchEvent, getchLightPlayer, getchTeams } from "./cache";
-import { State } from "khl-api-types";
+import { APIStage, RESTGetAPICommonData, Routes, State } from "khl-api-types";
 import {
   getPlayerCurrentSeasonStats,
   getPlayerGameByGame,
@@ -25,6 +25,7 @@ import { getLeagueSite } from "./league";
 import empty_avatar from "./public/empty_avatar";
 import { base64ToArrayBuffer } from "./public";
 import { gameCenterResponse, getGameClock } from "./gamecenter";
+import { request } from "./rest";
 
 export interface Env {
   KV: KVNamespace;
@@ -62,6 +63,7 @@ const zIntAsString = z
   .string()
   .refine((v) => /^\d+$/.test(v))
   .transform(Number);
+const zSeasonId = zIntAsString.or(z.literal("latest"));
 
 const zModulekitPlayerViewSchema = z.discriminatedUnion("category", [
   z.object({
@@ -122,7 +124,7 @@ export const zHockeyTechParams = z.intersection(
               }),
               z.object({
                 view: z.literal("roster"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
                 team_id: zIntAsString,
               }),
               z.object({
@@ -150,20 +152,20 @@ export const zHockeyTechParams = z.intersection(
               }),
               z.object({
                 view: z.literal("teamsbyseason"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
               }),
               z.object({
                 view: z.literal("schedule"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
                 team_id: zIntAsString.optional(),
               }),
               z.object({
                 view: z.literal("standingtypes"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
               }),
               z.object({
                 view: z.literal("statviewtype"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
                 stat: z.string(),
                 type: z.enum([
                   "standings",
@@ -182,14 +184,14 @@ export const zHockeyTechParams = z.intersection(
               }),
               z.object({
                 view: z.literal("combinedplayers"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
                 return_amount: zIntAsString,
                 qualified: z.enum(["all", "qualified"]),
                 type: z.enum(["skaters", "goalies"]),
               }),
               z.object({
                 view: z.literal("brackets"),
-                season_id: zIntAsString,
+                season_id: zSeasonId,
               }),
               z.object({
                 view: z.literal("searchplayers"),
@@ -279,11 +281,16 @@ router
               return modulekitResponse(params, key, games);
             }
             case "roster": {
+              const seasonId = await parseSeasonId(
+                env,
+                league,
+                params.season_id,
+              );
               const players = await getTeamRoster(
                 env,
                 league,
                 lang,
-                params.season_id,
+                seasonId,
                 params.team_id,
               );
               return modulekitResponse(params, key, players);
@@ -303,12 +310,12 @@ router
               return modulekitResponse(params, key, seasons);
             }
             case "teamsbyseason": {
-              const teams = await getTeamsBySeason(
+              const seasonId = await parseSeasonId(
                 env,
                 league,
-                lang,
                 params.season_id,
               );
+              const teams = await getTeamsBySeason(env, league, lang, seasonId);
               return modulekitResponse(params, key, teams);
             }
             case "player": {
@@ -368,11 +375,16 @@ router
               break;
             }
             case "schedule": {
+              const seasonId = await parseSeasonId(
+                env,
+                league,
+                params.season_id,
+              );
               const schedule = await getSeasonSchedule(
                 env,
                 league,
                 lang,
-                params.season_id,
+                seasonId,
                 params.team_id,
               );
               return modulekitResponse(params, key, schedule);
@@ -580,10 +592,44 @@ router
   // })
   .all("*", () => error(404));
 
+type MinimalStage = Pick<APIStage, "id" | "khl_id" | "season">;
+
+const parseSeasonId = async (
+  env: Env,
+  league: League,
+  value: z.infer<typeof zSeasonId>,
+): Promise<number> => {
+  if (typeof value === "number") return value;
+
+  const key = `${league}-latest-stage`;
+  const cached = await env.KV.get<MinimalStage>(key, "json");
+  if (cached) return cached.id;
+
+  // This shouldn't happen most of the time
+  const data = await request<RESTGetAPICommonData>(league, Routes.data(), {
+    params: { locale: "en" },
+  });
+  const { id, khl_id, season } = data.stages_v2[0];
+  await env.KV.put(key, JSON.stringify({ id, khl_id, season }));
+  return id;
+};
+
 export default {
   fetch: (request: IRequest, ...args: [Env, ExecutionContext]) =>
     router
       .handle(request, ...args)
       .then(json)
       .catch(error),
+  scheduled: async (_: ScheduledEvent, env: Env) => {
+    for (const league of ["khl", "whl", "mhl"] as const) {
+      const data = await request<RESTGetAPICommonData>(league, Routes.data(), {
+        params: { locale: "en" },
+      });
+      const { id, khl_id, season } = data.stages_v2[0];
+      await env.KV.put(
+        `${league}-latest-stage`,
+        JSON.stringify({ id, khl_id, season }),
+      );
+    }
+  },
 };

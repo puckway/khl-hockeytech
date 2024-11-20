@@ -5,3 +5,8 @@ compatibility_date = "2024-02-23"
 [[kv_namespaces]]
 binding = "KV"
 id = "07628a6f58074e4585f90a4eaff62225"
+
+[triggers]
+# Refresh the latest stage info on the 1st
+# and 15th of each month (twice a month)
+crons = ["0 0 1,15 * *"]
