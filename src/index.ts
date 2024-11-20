@@ -24,6 +24,7 @@ import { allTeams, getTeam } from "./teams";
 import { getLeagueSite } from "./league";
 import empty_avatar from "./public/empty_avatar";
 import { base64ToArrayBuffer } from "./public";
+import { gameCenterResponse, getGameClock } from "./gamecenter";
 
 export interface Env {
   KV: KVNamespace;
@@ -392,9 +393,30 @@ router
       }
       case "gc": {
         const lang = params.lang_code;
-        switch (params.tab) {
-          default:
-            break;
+        const key =
+          params.tab.substring(0, 1).toUpperCase() + params.tab.substring(1);
+        try {
+          switch (params.tab) {
+            case "clock": {
+              const game = await getGameClock(
+                env,
+                league,
+                lang,
+                params.game_id,
+              );
+              return gameCenterResponse(params, key, game);
+            }
+            default:
+              break;
+          }
+        } catch (e) {
+          console.error(e);
+          return new Response(JSON.stringify({ error: String(e) }), {
+            status: 200,
+            headers: {
+              "Content-Type": "text/html; charset=UTF-8",
+            },
+          });
         }
         break;
       }

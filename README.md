@@ -31,7 +31,7 @@ This is a drop-in proxy for the KHL, WHL, and MHL that enables compatibility wit
 - [x] searchPerson
 - [ ] getGamePreview
 - [ ] getGamePlayByPlay
-- [ ] getGameClock
+- [x] getGameClock
 - [ ] getGameSummary
 
 ## Nitty Gritty & Usage
