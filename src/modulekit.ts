@@ -944,9 +944,7 @@ export const getSeasonSchedule = async (
       game_id: String(event.id),
       season_id: String(event.stage_id ?? seasonId),
       quick_score: "0",
-      date_played: `${date.getUTCFullYear()}-${
-        date.getUTCMonth() + 1
-      }-${date.getUTCDate()}`,
+      date_played: date.toISOString().split("T")[0],
       date: date.toLocaleDateString(locale, {
         month: "short",
         day: "numeric",
