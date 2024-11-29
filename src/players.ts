@@ -132,9 +132,7 @@ export const getPlayerProfileBio = async (
     jersey_number: player.shirt_number?.toString() ?? "",
     most_recent_team_code: team?.abbreviations[locale] ?? "",
     most_recent_team_id: mostRecentTeam ? String(mostRecentTeam.id) : "",
-    most_recent_team_name: mostRecentTeam
-      ? `${mostRecentTeam.location} ${mostRecentTeam.name}`
-      : "",
+    most_recent_team_name: mostRecentTeam?.name ?? "",
     position: player.role_key
       ? player.role_key.substring(0, 1).toUpperCase()
       : "",
@@ -357,7 +355,7 @@ export const getPlayerSeasonStats = async (
         team_city: player.team.location,
         team_code: getTeam(league, player.team.id)?.abbreviations[locale] ?? "",
         team_id: String(player.team.id),
-        team_name: `${player.team.location} ${player.team.name}`,
+        team_name: player.team.name,
         team_nickname: player.team.name,
         division: player.team.division ?? "",
         max_start_date: "",
@@ -455,7 +453,7 @@ export const getPlayerSeasonStats = async (
         team_city: player.team.location,
         team_code: getTeam(league, player.team.id)?.abbreviations[locale] ?? "",
         team_id: String(player.team.id),
-        team_name: `${player.team.location} ${player.team.name}`,
+        team_name: player.team.name,
         team_nickname: player.team.name,
         division: player.team.division ?? "",
         max_start_date: "",
@@ -598,7 +596,7 @@ export const getPlayerCurrentSeasonStats = async (
     first_name,
     last_name,
     team_id: String(player.team.id),
-    team_name: `${player.team.location} ${player.team.name}`,
+    team_name: player.team.name,
   } satisfies PlayerCurrentSeasonStats;
 };
 
